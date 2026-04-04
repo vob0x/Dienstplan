@@ -634,14 +634,18 @@ export function subscribeToDutySync() {
       }
     })
 
-  // Visibility change handler: re-fetch when tab becomes visible
+  // Visibility change handler: re-fetch when tab becomes visible (incl. team sync)
   if (!visibilityHandler) {
-    visibilityHandler = () => {
+    visibilityHandler = async () => {
       if (document.visibilityState === 'visible') {
         const currentTeamId = useDutyStore.getState().teamId
         if (currentTeamId) {
-          console.log('[Visibility] Tab active — re-fetching data')
-          useDutyStore.getState().fetchAll(currentTeamId)
+          console.log('[Visibility] Tab active — re-fetching data + team sync')
+          const { useTeamStore } = await import('@/stores/teamStore')
+          await useTeamStore.getState().fetchTeamData()
+          await useDutyStore.getState().fetchAll(currentTeamId)
+          const { syncTeamMembersToDpMembers } = await import('@/lib/syncTeamMembers')
+          await syncTeamMembersToDpMembers()
         }
       }
     }
@@ -654,9 +658,13 @@ export function subscribeToDutySync() {
 
 function startPolling(teamId: string) {
   if (pollingInterval) clearInterval(pollingInterval)
-  pollingInterval = setInterval(() => {
+  pollingInterval = setInterval(async () => {
     if (document.visibilityState === 'visible') {
-      useDutyStore.getState().fetchAll(teamId)
+      const { useTeamStore } = await import('@/stores/teamStore')
+      await useTeamStore.getState().fetchTeamData()
+      await useDutyStore.getState().fetchAll(teamId)
+      const { syncTeamMembersToDpMembers } = await import('@/lib/syncTeamMembers')
+      await syncTeamMembersToDpMembers()
     }
   }, 30000) // 30 seconds
 }

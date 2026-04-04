@@ -4,6 +4,7 @@ import { useUiStore } from '@/stores/uiStore'
 import { useDutyStore, subscribeToDutySync, unsubscribeFromDutySync } from '@/stores/dutyStore'
 import { useTeamStore } from '@/stores/teamStore'
 import { useSwapStore } from '@/stores/swapStore'
+import { syncTeamMembersToDpMembers } from '@/lib/syncTeamMembers'
 import { I18nProvider, useI18n } from '@/i18n'
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
 import Layout from '@/components/Layout'
@@ -30,21 +31,7 @@ function AppContent() {
         const currentTeam = useTeamStore.getState().team
         if (currentTeam) {
           await fetchAll(currentTeam.id)
-          // Auto-sync: create dp_members for team_members that don't have one yet
-          const teamMembers = useTeamStore.getState().members
-          const dpMembers = useDutyStore.getState().members
-          for (const tm of teamMembers) {
-            const alreadyLinked = dpMembers.some((m) => m.user_id === tm.user_id)
-            if (!alreadyLinked) {
-              const displayName = tm.display_name || tm.user_id.slice(0, 8)
-              try {
-                const newMember = await useDutyStore.getState().addMember(displayName)
-                if (newMember) {
-                  await useDutyStore.getState().updateMember(newMember.id, { user_id: tm.user_id })
-                }
-              } catch { /* duplicate name or other error — skip */ }
-            }
-          }
+          await syncTeamMembersToDpMembers()
           subscribeToDutySync()
           fetchSwaps(currentTeam.id)
         }

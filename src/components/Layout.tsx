@@ -6,6 +6,7 @@ import { useI18n } from '@/i18n'
 import { isSupabaseAvailable } from '@/lib/supabase'
 import { useDutyStore } from '@/stores/dutyStore'
 import { useSwapStore } from '@/stores/swapStore'
+import { syncTeamMembersToDpMembers } from '@/lib/syncTeamMembers'
 import { Calendar, Users, Settings, BarChart3, Sun, Moon, LogOut, Globe, WifiOff, HelpCircle, RefreshCw } from 'lucide-react'
 import ToastContainer from '@/components/UI/Toast'
 import HelpPanel from '@/components/UI/HelpPanel'
@@ -43,11 +44,15 @@ export default function Layout() {
   const fetchSwaps = useSwapStore((s) => s.fetchSwaps)
   const [refreshing, setRefreshing] = useState(false)
 
+  const fetchTeamData = useTeamStore((s) => s.fetchTeamData)
+
   const handleRefresh = async () => {
     if (!team || refreshing) return
     setRefreshing(true)
     try {
+      await fetchTeamData()
       await fetchAll(team.id)
+      await syncTeamMembersToDpMembers()
       await fetchSwaps(team.id)
     } finally {
       setRefreshing(false)
