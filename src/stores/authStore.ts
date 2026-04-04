@@ -174,9 +174,19 @@ export const useAuthStore = create<AuthState>((set) => ({
             return
           }
 
-          // No session = email confirmation required. Since we use fake emails,
-          // auto-sign-in immediately after successful signup.
-          console.log('No session after signUp (email confirmation?). Auto-signing in...')
+          // No session = email confirmation is still enabled in Supabase.
+          // Try to auto-confirm the user via RPC, then sign in.
+          console.log('No session after signUp — attempting auto-confirm workaround...')
+
+          // Attempt 1: Try auto-confirm via RPC (requires function in Supabase)
+          try {
+            await supabaseClient.rpc('auto_confirm_user', { user_email: codeToEmail(codename) })
+            console.log('Auto-confirm RPC succeeded')
+          } catch (e) {
+            console.warn('auto_confirm_user RPC not available (expected):', e)
+          }
+
+          // Attempt 2: Sign in — works if auto-confirm succeeded or email already confirmed
           const { data: signInData, error: signInError } = await supabaseClient.auth.signInWithPassword({
             email: codeToEmail(codename), password
           })
@@ -187,9 +197,13 @@ export const useAuthStore = create<AuthState>((set) => ({
             set({ profile, session, loading: false, isAuthenticated: true, needsPassword: false })
             return
           }
-          // If auto-sign-in also fails, throw descriptive error
+
+          // If sign-in fails with "Email not confirmed", provide actionable error
           if (signInError) {
             console.warn('Auto-sign-in after signup failed:', signInError.message)
+            if (signInError.message?.toLowerCase().includes('email not confirmed')) {
+              throw new Error('EMAIL_CONFIRM_REQUIRED')
+            }
             throw new Error(signInError.message)
           }
           return

@@ -7,7 +7,7 @@ export const de = {
     codename: 'Codename', password: 'Passwort', passwordConfirm: 'Passwort bestätigen',
     codenamePlaceholder: 'Dein Pseudonym wählen', passwordPlaceholder: 'Mindestens 6 Zeichen',
     noAccount: 'Noch kein Konto?', hasAccount: 'Bereits registriert?',
-    errors: { codename_taken: 'Codename bereits vergeben', invalid_credentials: 'Falscher Codename oder Passwort', password_mismatch: 'Passwörter stimmen nicht überein', password_short: 'Mindestens 6 Zeichen', email_not_confirmed: 'Registrierung fehlgeschlagen. Bitte erneut versuchen.' },
+    errors: { codename_taken: 'Codename bereits vergeben', invalid_credentials: 'Falscher Codename oder Passwort', password_mismatch: 'Passwörter stimmen nicht überein', password_short: 'Mindestens 6 Zeichen', email_not_confirmed: 'Registrierung fehlgeschlagen. Bitte erneut versuchen.', email_confirm_required: 'E-Mail-Bestätigung ist in Supabase aktiviert. Bitte in Supabase → Authentication → Providers → Email → "Confirm email" deaktivieren.', signup_disabled: 'Registrierung ist in Supabase deaktiviert. Bitte in Authentication → Settings aktivieren.' },
   },
   calendar: {
     today: 'Heute', weekNumber: 'KW', noEntries: 'Keine Einträge',

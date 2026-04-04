@@ -71,6 +71,7 @@ export default function Layout() {
         background: 'var(--surface-elevated)',
         borderBottom: '1px solid var(--border)',
         backdropFilter: 'blur(20px)',
+        paddingTop: 'env(safe-area-inset-top, 0px)',
       }}>
         <div className="flex items-center justify-between px-4 py-2 max-w-[1400px] mx-auto">
           {/* Left: Logo */}

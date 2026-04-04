@@ -7,7 +7,7 @@ export const fr = {
     codename: 'Pseudonyme', password: 'Mot de passe', passwordConfirm: 'Confirmer le mot de passe',
     codenamePlaceholder: 'Choisir un pseudonyme', passwordPlaceholder: 'Au moins 6 caractères',
     noAccount: 'Pas encore de compte?', hasAccount: 'Déjà inscrit?',
-    errors: { codename_taken: 'Pseudonyme déjà pris', invalid_credentials: 'Pseudonyme ou mot de passe incorrect', password_mismatch: 'Les mots de passe ne correspondent pas', password_short: 'Au moins 6 caractères', email_not_confirmed: 'Inscription échouée. Veuillez réessayer.' },
+    errors: { codename_taken: 'Pseudonyme déjà pris', invalid_credentials: 'Pseudonyme ou mot de passe incorrect', password_mismatch: 'Les mots de passe ne correspondent pas', password_short: 'Au moins 6 caractères', email_not_confirmed: 'Inscription échouée. Veuillez réessayer.', email_confirm_required: 'Confirmation e-mail activée dans Supabase. Désactiver dans Authentication → Providers → Email → "Confirm email".', signup_disabled: 'Inscription désactivée dans Supabase. Activer dans Authentication → Settings.' },
   },
   calendar: {
     today: "Aujourd'hui", weekNumber: 'Sem', noEntries: 'Aucune entrée',
