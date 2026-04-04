@@ -1,7 +1,6 @@
 import { useState, useRef } from 'react'
 import { useDutyStore } from '@/stores/dutyStore'
 import { useUiStore } from '@/stores/uiStore'
-import { useTeamStore } from '@/stores/teamStore'
 import { useI18n } from '@/i18n'
 import ConfirmDialog from '@/components/UI/ConfirmDialog'
 import { Plus, Pencil, Trash2, GripVertical, Check, X as XIcon, Link2 } from 'lucide-react'
@@ -14,14 +13,7 @@ const COLOR_PALETTE = [
 export default function ManageView() {
   const { t } = useI18n()
   const { members, categories, addMember, updateMember, removeMember, reorderMembers, addCategory, updateCategory, removeCategory } = useDutyStore()
-  const { members: teamMembers } = useTeamStore()
   const addToast = useUiStore((s) => s.addToast)
-
-  // Map team members to their dp_member (if linked) for activate/deactivate UI
-  const teamMemberStatus = teamMembers.map((tm) => {
-    const linked = members.find((m) => m.user_id === tm.user_id)
-    return { ...tm, dpMember: linked || null, isActive: linked?.is_active ?? false }
-  })
 
   const [newMemberName, setNewMemberName] = useState('')
   const [editingMember, setEditingMember] = useState<string | null>(null)
@@ -83,41 +75,6 @@ export default function ManageView() {
     }
   }
 
-  const handleActivateTeamMember = async (userId: string, displayName: string) => {
-    // Check if there's already a dp_member with this user_id (just deactivated)
-    const existing = members.find((m) => m.user_id === userId)
-    if (existing) {
-      await updateMember(existing.id, { is_active: true })
-      addToast({ type: 'success', message: `${displayName} ${t('members.addedSuccess')}` })
-      return
-    }
-    try {
-      const newMember = await addMember(displayName)
-      if (newMember) {
-        await updateMember(newMember.id, { user_id: userId })
-      }
-      addToast({ type: 'success', message: `${displayName} ${t('members.addedSuccess')}` })
-    } catch (error) {
-      if (error instanceof Error && error.message === 'duplicate') {
-        // Name exists but not linked — link it
-        const byName = members.find((m) => m.name.toLowerCase() === displayName.toLowerCase())
-        if (byName) {
-          await updateMember(byName.id, { user_id: userId, is_active: true })
-          addToast({ type: 'success', message: `${displayName} ${t('members.addedSuccess')}` })
-        } else {
-          addToast({ type: 'warning', message: t('members.duplicate') })
-        }
-      } else {
-        addToast({ type: 'error', message: 'Error adding member' })
-      }
-    }
-  }
-
-  const handleDeactivateTeamMember = async (dpMemberId: string, displayName: string) => {
-    await updateMember(dpMemberId, { is_active: false })
-    addToast({ type: 'info', message: `${displayName} deaktiviert` })
-  }
-
   const handleSaveMember = async (id: string) => {
     if (!editMemberName.trim()) return
     await updateMember(id, { name: editMemberName.trim() })
@@ -177,49 +134,6 @@ export default function ManageView() {
 
   return (
     <div className="max-w-2xl mx-auto space-y-8">
-      {/* Team Members Section */}
-      {teamMemberStatus.length > 0 && (
-        <section>
-          <h2 className="text-lg font-bold mb-4" style={{ fontFamily: 'var(--font-display)', color: 'var(--text)' }}>
-            {t('members.teamSync')}
-          </h2>
-          <p className="text-sm mb-3" style={{ color: 'var(--text-muted)' }}>
-            {t('members.fromTeam')}
-          </p>
-          <div className="space-y-2">
-            {teamMemberStatus.map((tm) => (
-              <div key={tm.id} className="flex items-center justify-between px-4 py-3 rounded-xl"
-                style={{ background: 'var(--surface)', border: '1px solid var(--border)', opacity: tm.isActive ? 1 : 0.6 }}>
-                <div className="flex items-center gap-2 flex-1">
-                  <Link2 size={14} style={{ color: tm.isActive ? 'var(--neon-cyan)' : 'var(--text-muted)' }} />
-                  <span style={{ color: 'var(--text)' }}>{tm.display_name || tm.user_id.slice(0, 8)}</span>
-                  {tm.isActive && (
-                    <span className="text-[10px] px-2 py-0.5 rounded-full" style={{ background: 'var(--surface-active)', color: 'var(--neon-cyan)' }}>
-                      {t('members.alreadyActive')}
-                    </span>
-                  )}
-                </div>
-                {tm.isActive && tm.dpMember ? (
-                  <button
-                    onClick={() => handleDeactivateTeamMember(tm.dpMember!.id, tm.display_name || tm.user_id)}
-                    className="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
-                    style={{ background: 'var(--surface-active)', color: 'var(--danger)' }}>
-                    {t('members.remove')}
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => handleActivateTeamMember(tm.user_id, tm.display_name || tm.user_id)}
-                    className="px-3 py-1.5 rounded-lg text-xs font-medium"
-                    style={{ background: 'var(--neon-cyan)', color: '#0A0B0F' }}>
-                    {t('members.activate')}
-                  </button>
-                )}
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
-
       {/* Members Section */}
       <section>
         <h2 className="text-lg font-bold mb-4" style={{ fontFamily: 'var(--font-display)', color: 'var(--text)' }}>

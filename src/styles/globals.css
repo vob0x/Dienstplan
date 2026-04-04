@@ -180,7 +180,7 @@ body::before {
 .duty-cell {
   cursor: pointer;
   transition: background var(--transition-fast);
-  height: 36px;
+  height: 28px;
   text-align: center;
   vertical-align: middle;
   font-family: var(--font-mono);
@@ -202,8 +202,13 @@ body::before {
 }
 
 .duty-cell.paint-highlight {
-  outline: 2px dashed var(--neon-cyan);
+  cursor: crosshair;
+}
+
+.duty-cell.paint-highlight:hover {
+  outline: 2px solid var(--neon-cyan);
   outline-offset: -2px;
+  background: rgba(126, 184, 196, 0.15) !important;
 }
 
 /* Approval status indicators */

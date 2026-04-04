@@ -10,7 +10,7 @@ import DutyPicker from './DutyPicker'
 export default function WeekView() {
   const { t, tArray, language } = useI18n()
   const { weekStart, paintMode, paintCategoryId } = useUiStore()
-  const { members, categories, getDuty, setDuty } = useDutyStore()
+  const { members, categories, getDuties, setDuty } = useDutyStore()
   const [picker, setPicker] = useState<{ memberId: string; date: string } | null>(null)
   const selectedMember = members.find((m) => m.id === picker?.memberId)
 
@@ -95,8 +95,8 @@ export default function WeekView() {
                     {member.name}
                   </td>
                   {weekDates.map(({ dateStr, date }) => {
-                    const duty = getDuty(member.id, dateStr)
-                    const cat = duty ? categories.find((c) => c.id === duty.category_id) : null
+                    const allDuties = getDuties(member.id, dateStr)
+                    const firstCat = allDuties.length > 0 ? categories.find((c) => c.id === allDuties[0]?.category_id) : null
                     const isToday = dateStr === todayStr
                     return (
                       <td
@@ -107,21 +107,24 @@ export default function WeekView() {
                           borderBottom: '1px solid var(--border-light)',
                           cursor: 'pointer',
                           padding: '8px',
-                          background: cat ? `${cat.color}18` : undefined,
+                          background: firstCat ? `${firstCat.color}18` : undefined,
                           minHeight: '50px',
                         }}
                       >
-                        {cat && (
-                          <div className="flex items-center gap-1.5">
-                            <span className="w-6 h-6 rounded flex items-center justify-center text-xs font-bold"
-                              style={{ background: `${cat.color}33`, color: cat.color }}>
-                              {cat.letter}
-                            </span>
-                            <span className="text-xs" style={{ color: cat.color }}>{cat.name}</span>
-                          </div>
-                        )}
-                        {duty?.note && (
-                          <div className="text-[10px] mt-1 truncate" style={{ color: 'var(--text-muted)' }}>{duty.note}</div>
+                        {allDuties.map((duty) => {
+                          const cat = categories.find((c) => c.id === duty.category_id)
+                          return cat ? (
+                            <div key={duty.id} className="flex items-center gap-1.5 mb-0.5">
+                              <span className="w-6 h-6 rounded flex items-center justify-center text-xs font-bold"
+                                style={{ background: `${cat.color}33`, color: cat.color }}>
+                                {cat.letter}
+                              </span>
+                              <span className="text-xs" style={{ color: cat.color }}>{cat.name}</span>
+                            </div>
+                          ) : null
+                        })}
+                        {allDuties[0]?.note && (
+                          <div className="text-[10px] mt-1 truncate" style={{ color: 'var(--text-muted)' }}>{allDuties[0].note}</div>
                         )}
                       </td>
                     )

@@ -126,11 +126,11 @@ export default function MonthView() {
 
           {/* Calendar table */}
           <div className="overflow-x-auto rounded-xl" style={{ border: '1px solid var(--border)', WebkitOverflowScrolling: 'touch' }}>
-            <table className="border-collapse" style={{ minWidth: '700px', width: '100%', tableLayout: 'fixed' }}>
+            <table className="border-collapse" style={{ minWidth: '600px', width: '100%', tableLayout: 'auto' }}>
               <thead>
                 <tr>
                   <th className="sticky left-0 z-10 px-2 py-1 text-left text-xs font-semibold"
-                    style={{ background: 'var(--surface-solid)', color: 'var(--text-secondary)', borderBottom: '1px solid var(--border)', minWidth: '100px' }}>
+                    style={{ background: 'var(--surface-solid)', color: 'var(--text-secondary)', borderBottom: '1px solid var(--border)', width: '140px' }}>
                     {t('members.title')}
                   </th>
                 {dates.map(({ date, dateStr, dayOfWeek }) => {
@@ -169,7 +169,8 @@ export default function MonthView() {
                       background: 'var(--surface-solid)',
                       color: 'var(--text)',
                       borderBottom: '1px solid var(--border-light)',
-                      maxWidth: '120px',
+                      width: '140px',
+                      maxWidth: '160px',
                       height: '28px',
                       lineHeight: '28px',
                     }}>

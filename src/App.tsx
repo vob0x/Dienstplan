@@ -23,15 +23,29 @@ function AppContent() {
     initializeAuth()
   }, [initializeAuth])
 
-  // Load team data and duties once authenticated
+  // Load team data and duties once authenticated, then auto-sync team members → dp_members
   useEffect(() => {
     if (isAuthenticated) {
-      fetchTeamData().then(() => {
+      fetchTeamData().then(async () => {
         const currentTeam = useTeamStore.getState().team
         if (currentTeam) {
-          fetchAll(currentTeam.id).then(() => {
-            subscribeToDutySync()
-          })
+          await fetchAll(currentTeam.id)
+          // Auto-sync: create dp_members for team_members that don't have one yet
+          const teamMembers = useTeamStore.getState().members
+          const dpMembers = useDutyStore.getState().members
+          for (const tm of teamMembers) {
+            const alreadyLinked = dpMembers.some((m) => m.user_id === tm.user_id)
+            if (!alreadyLinked) {
+              const displayName = tm.display_name || tm.user_id.slice(0, 8)
+              try {
+                const newMember = await useDutyStore.getState().addMember(displayName)
+                if (newMember) {
+                  await useDutyStore.getState().updateMember(newMember.id, { user_id: tm.user_id })
+                }
+              } catch { /* duplicate name or other error — skip */ }
+            }
+          }
+          subscribeToDutySync()
           fetchSwaps(currentTeam.id)
         }
       })
