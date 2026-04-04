@@ -13,6 +13,11 @@ if (SUPABASE_URL && SUPABASE_ANON_KEY) {
       // Share auth session with Zeiterfassung (same storageKey)
       storageKey: 'zeiterfassung_auth',
     },
+    realtime: {
+      params: {
+        eventsPerSecond: 10,
+      },
+    },
   })
 } else {
   console.warn('Supabase credentials missing – running in offline/local mode')

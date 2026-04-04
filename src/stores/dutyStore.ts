@@ -515,12 +515,28 @@ export const useDutyStore = create<DutyState>((set, get) => ({
 // Realtime Subscriptions
 // ============================================================================
 
+// ============================================================================
+// Realtime Subscriptions + Visibility Re-Fetch
+// ============================================================================
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let dutiesChannel: any = null
+let visibilityHandler: (() => void) | null = null
+
+function syncLocalStorage() {
+  const { teamId, members, categories, duties } = useDutyStore.getState()
+  if (!teamId) return
+  saveLocal(`dp_members_${teamId}`, members)
+  saveLocal(`dp_categories_${teamId}`, categories)
+  saveLocal(`dp_duties_${teamId}`, duties)
+}
 
 export function subscribeToDutySync() {
   const teamId = useDutyStore.getState().teamId
   if (!teamId || !isSupabaseAvailable() || !supabaseClient) return
+
+  // Unsubscribe existing channel first to avoid duplicates
+  unsubscribeFromDutySync()
 
   dutiesChannel = supabaseClient
     .channel(`dp_realtime_${teamId}`)
@@ -530,13 +546,18 @@ export function subscribeToDutySync() {
         const duty = payload.new as DpDuty
         if (!store.duties.find((d) => d.id === duty.id)) {
           useDutyStore.setState((s) => ({ duties: [...s.duties, duty] }))
+          syncLocalStorage()
         }
       } else if (payload.eventType === 'UPDATE') {
         const duty = payload.new as DpDuty
         useDutyStore.setState((s) => ({ duties: s.duties.map((d) => d.id === duty.id ? duty : d) }))
+        syncLocalStorage()
       } else if (payload.eventType === 'DELETE') {
         const old = payload.old as { id: string }
-        useDutyStore.setState((s) => ({ duties: s.duties.filter((d) => d.id !== old.id) }))
+        if (old.id) {
+          useDutyStore.setState((s) => ({ duties: s.duties.filter((d) => d.id !== old.id) }))
+          syncLocalStorage()
+        }
       }
     })
     .on('postgres_changes', { event: '*', schema: 'public', table: 'dp_members', filter: `team_id=eq.${teamId}` }, (payload) => {
@@ -545,13 +566,22 @@ export function subscribeToDutySync() {
         const store = useDutyStore.getState()
         if (!store.members.find((x) => x.id === m.id)) {
           useDutyStore.setState((s) => ({ members: [...s.members, m] }))
+          syncLocalStorage()
         }
       } else if (payload.eventType === 'UPDATE') {
         const m = payload.new as DpMember
         useDutyStore.setState((s) => ({ members: s.members.map((x) => x.id === m.id ? m : x) }))
+        syncLocalStorage()
       } else if (payload.eventType === 'DELETE') {
         const old = payload.old as { id: string }
-        useDutyStore.setState((s) => ({ members: s.members.filter((x) => x.id !== old.id) }))
+        if (old.id) {
+          useDutyStore.setState((s) => ({
+            members: s.members.filter((x) => x.id !== old.id),
+            // Also remove duties for deleted member
+            duties: s.duties.filter((d) => d.member_id !== old.id),
+          }))
+          syncLocalStorage()
+        }
       }
     })
     .on('postgres_changes', { event: '*', schema: 'public', table: 'dp_categories', filter: `team_id=eq.${teamId}` }, (payload) => {
@@ -560,21 +590,51 @@ export function subscribeToDutySync() {
         const store = useDutyStore.getState()
         if (!store.categories.find((x) => x.id === c.id)) {
           useDutyStore.setState((s) => ({ categories: [...s.categories, c] }))
+          syncLocalStorage()
         }
       } else if (payload.eventType === 'UPDATE') {
         const c = payload.new as DpCategory
         useDutyStore.setState((s) => ({ categories: s.categories.map((x) => x.id === c.id ? c : x) }))
+        syncLocalStorage()
       } else if (payload.eventType === 'DELETE') {
         const old = payload.old as { id: string }
-        useDutyStore.setState((s) => ({ categories: s.categories.filter((x) => x.id !== old.id) }))
+        if (old.id) {
+          useDutyStore.setState((s) => ({ categories: s.categories.filter((x) => x.id !== old.id) }))
+          syncLocalStorage()
+        }
       }
     })
-    .subscribe()
+    .subscribe((status: string) => {
+      console.log('[Realtime]', status)
+      // On reconnect after error, do a full re-fetch
+      if (status === 'SUBSCRIBED') {
+        console.log('[Realtime] Connected — fetching latest data')
+        useDutyStore.getState().fetchAll(teamId)
+      }
+    })
+
+  // Visibility change handler: re-fetch when tab becomes visible
+  if (!visibilityHandler) {
+    visibilityHandler = () => {
+      if (document.visibilityState === 'visible') {
+        const currentTeamId = useDutyStore.getState().teamId
+        if (currentTeamId) {
+          console.log('[Visibility] Tab active — re-fetching data')
+          useDutyStore.getState().fetchAll(currentTeamId)
+        }
+      }
+    }
+    document.addEventListener('visibilitychange', visibilityHandler)
+  }
 }
 
 export function unsubscribeFromDutySync() {
   if (dutiesChannel) {
     supabaseClient?.removeChannel(dutiesChannel)
     dutiesChannel = null
+  }
+  if (visibilityHandler) {
+    document.removeEventListener('visibilitychange', visibilityHandler)
+    visibilityHandler = null
   }
 }
