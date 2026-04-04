@@ -1,0 +1,124 @@
+import { useMemo } from 'react'
+import { useUiStore } from '@/stores/uiStore'
+import { useDutyStore } from '@/stores/dutyStore'
+import { useI18n } from '@/i18n'
+import { getHolidays, isWeekend } from '@/lib/holidays'
+import { toDateStr } from '@/lib/utils'
+import { BarChart3, ChevronLeft, ChevronRight } from 'lucide-react'
+
+export default function StatsView() {
+  const { t } = useI18n()
+  const { year } = useUiStore()
+  const { members, categories, duties } = useDutyStore()
+  const holidays = useMemo(() => getHolidays(year), [year])
+
+  // Count business days in the year (exclude weekends & holidays)
+  const businessDays = useMemo(() => {
+    let count = 0
+    const holidayDates = new Set(holidays.map((h) => h.date))
+    for (let m = 0; m < 12; m++) {
+      const days = new Date(year, m + 1, 0).getDate()
+      for (let d = 1; d <= days; d++) {
+        const date = new Date(year, m, d)
+        if (!isWeekend(date) && !holidayDates.has(toDateStr(date))) {
+          count++
+        }
+      }
+    }
+    return count
+  }, [year, holidays])
+
+  // Build stats per member
+  const stats = useMemo(() => {
+    const yearDuties = duties.filter((d) => d.date.startsWith(String(year)))
+
+    return members.filter((m) => m.is_active).map((member) => {
+      const memberDuties = yearDuties.filter((d) => d.member_id === member.id)
+      const counts: Record<string, number> = {}
+
+      for (const cat of categories) {
+        counts[cat.id] = memberDuties.filter((d) => d.category_id === cat.id).length
+      }
+
+      return { member, counts, total: memberDuties.length }
+    })
+  }, [members, categories, duties, year])
+
+  return (
+    <div className="max-w-3xl mx-auto">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-3">
+          <BarChart3 size={24} style={{ color: 'var(--neon-cyan)' }} />
+          <h2 className="text-xl font-bold" style={{ fontFamily: 'var(--font-display)', color: 'var(--text)' }}>
+            {t('stats.title')}
+          </h2>
+        </div>
+        <div className="flex items-center gap-2">
+          <button onClick={() => useUiStore.setState({ year: year - 1 })} className="p-1.5 rounded-lg"
+            style={{ color: 'var(--text-secondary)' }}><ChevronLeft size={18} /></button>
+          <span className="text-sm font-bold font-mono" style={{ color: 'var(--text)' }}>{year}</span>
+          <button onClick={() => useUiStore.setState({ year: year + 1 })} className="p-1.5 rounded-lg"
+            style={{ color: 'var(--text-secondary)' }}><ChevronRight size={18} /></button>
+        </div>
+      </div>
+
+      {/* Business days info */}
+      <div className="mb-6 text-sm" style={{ color: 'var(--text-muted)' }}>
+        {t('stats.workDays')}: <span className="font-bold" style={{ color: 'var(--text)' }}>{businessDays}</span>
+      </div>
+
+      {/* Member stats cards */}
+      <div className="space-y-4">
+        {stats.map(({ member, counts, total }) => (
+          <div key={member.id} className="p-4 rounded-xl" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-bold" style={{ color: 'var(--text)' }}>{member.name}</h3>
+              <span className="text-xs font-mono" style={{ color: 'var(--text-muted)' }}>
+                {t('stats.totalDays')}: {total}
+              </span>
+            </div>
+
+            <div className="flex flex-wrap gap-3">
+              {categories.map((cat) => {
+                const count = counts[cat.id] || 0
+                const pct = businessDays > 0 ? Math.round((count / businessDays) * 100) : 0
+                return (
+                  <div key={cat.id} className="flex items-center gap-2 px-3 py-2 rounded-lg"
+                    style={{ background: `${cat.color}12`, border: `1px solid ${cat.color}22` }}>
+                    <span className="w-6 h-6 rounded flex items-center justify-center text-xs font-bold"
+                      style={{ background: `${cat.color}33`, color: cat.color }}>{cat.letter}</span>
+                    <div>
+                      <div className="text-xs font-medium" style={{ color: cat.color }}>{cat.name}</div>
+                      <div className="text-sm font-bold" style={{ color: 'var(--text)' }}>
+                        {count} <span className="text-[10px] font-normal" style={{ color: 'var(--text-muted)' }}>({pct}%)</span>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+
+            {/* Mini bar chart */}
+            {total > 0 && (
+              <div className="flex h-2 rounded-full overflow-hidden mt-3" style={{ background: 'var(--surface-solid)' }}>
+                {categories.map((cat) => {
+                  const count = counts[cat.id] || 0
+                  const pct = (count / total) * 100
+                  if (pct === 0) return null
+                  return <div key={cat.id} style={{ width: `${pct}%`, background: cat.color }} title={`${cat.name}: ${count}`} />
+                })}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {members.length === 0 && (
+        <div className="text-center py-16" style={{ color: 'var(--text-muted)' }}>
+          <p>{t('calendar.noEntries')}</p>
+        </div>
+      )}
+    </div>
+  )
+}

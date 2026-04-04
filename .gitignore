@@ -1,0 +1,17 @@
+node_modules
+dist
+build
+.env
+.env.local
+.env.*.local
+.vscode
+.idea
+*.swp
+*.swo
+*~
+.DS_Store
+ios
+android
+.cache
+*.local
+.turbo
