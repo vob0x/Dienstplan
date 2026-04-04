@@ -1,6 +1,6 @@
 export const de = {
   app: { name: 'Dienstplan', tagline: 'Schichtplanung für Teams' },
-  nav: { calendar: 'Kalender', team: 'Team', manage: 'Verwaltung', stats: 'Statistiken' },
+  nav: { calendar: 'Kalender', team: 'Team', manage: 'Verwaltung', stats: 'Statistiken', main: 'Hauptnavigation', mobile: 'Mobile Navigation' },
   views: { month: 'Monat', week: 'Woche', day: 'Tag', year: 'Jahr' },
   auth: {
     signIn: 'Anmelden', signUp: 'Registrieren', signOut: 'Abmelden',
@@ -15,6 +15,7 @@ export const de = {
     paintModeEscHint: '(Escape zum Beenden)',
     exitPaint: 'Beenden',
     weekend: 'Wochenende',
+    searchMembers: 'Mitarbeiter suchen...',
   },
   duty: {
     pick: 'Dienst wählen', note: 'Notiz', notePlaceholder: 'Optionale Notiz...',
@@ -114,6 +115,7 @@ export const de = {
       navTeam: 'Team',
       navManage: 'Verwaltung',
       navStats: 'Statistiken',
+      help: 'Hilfe öffnen',
     },
     roles: 'Rollen',
     rolesDesc: {

@@ -43,6 +43,11 @@ interface UiState {
   addToast: (t: Omit<Toast, 'id'>) => void
   removeToast: (id: string) => void
 
+  // Help panel
+  helpOpen: boolean
+  setHelpOpen: (open: boolean) => void
+  toggleHelp: () => void
+
   // Mobile
   sidebarOpen: boolean
   setSidebarOpen: (open: boolean) => void
@@ -71,6 +76,7 @@ export const useUiStore = create<UiState>((set, get) => ({
   paintMode: false,
   paintCategoryId: null,
   toasts: [],
+  helpOpen: false,
   sidebarOpen: false,
 
   setTheme: (t) => { localStorage.setItem('dp-theme', t); set({ theme: t }) },
@@ -177,6 +183,9 @@ export const useUiStore = create<UiState>((set, get) => ({
     setTimeout(() => get().removeToast(id), duration)
   },
   removeToast: (id) => set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) })),
+
+  setHelpOpen: (open) => set({ helpOpen: open }),
+  toggleHelp: () => set((s) => ({ helpOpen: !s.helpOpen })),
 
   setSidebarOpen: (open) => set({ sidebarOpen: open }),
   toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),

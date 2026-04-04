@@ -1,6 +1,6 @@
 export const fr = {
   app: { name: 'Planning', tagline: 'Planification des équipes' },
-  nav: { calendar: 'Calendrier', team: 'Équipe', manage: 'Gestion', stats: 'Statistiques' },
+  nav: { calendar: 'Calendrier', team: 'Équipe', manage: 'Gestion', stats: 'Statistiques', main: 'Navigation principale', mobile: 'Navigation mobile' },
   views: { month: 'Mois', week: 'Semaine', day: 'Jour', year: 'Année' },
   auth: {
     signIn: 'Connexion', signUp: 'Inscription', signOut: 'Déconnexion',
@@ -15,6 +15,7 @@ export const fr = {
     paintModeEscHint: '(Échap pour quitter)',
     exitPaint: 'Quitter',
     weekend: 'Week-end',
+    searchMembers: 'Rechercher un collaborateur...',
   },
   duty: {
     pick: 'Choisir le service', note: 'Note', notePlaceholder: 'Note optionnelle...',
@@ -114,6 +115,7 @@ export const fr = {
       navTeam: 'Équipe',
       navManage: 'Gestion',
       navStats: 'Statistiques',
+      help: 'Ouvrir l\'aide',
     },
     roles: 'Rôles',
     rolesDesc: {

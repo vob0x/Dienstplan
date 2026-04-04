@@ -2,6 +2,7 @@ import { useState, useMemo, useCallback } from 'react'
 import { useUiStore } from '@/stores/uiStore'
 import { useDutyStore } from '@/stores/dutyStore'
 import { useI18n } from '@/i18n'
+// removeDuty is accessed via useDutyStore.getState() in the callback
 import { getHolidays, isHoliday, isWeekend } from '@/lib/holidays'
 import { daysInMonth, toDateStr } from '@/lib/utils'
 import CalendarNav from './CalendarNav'
@@ -35,11 +36,17 @@ export default function MonthView() {
 
   const handleCellClick = useCallback((memberId: string, dateStr: string) => {
     if (paintMode && paintCategoryId) {
-      setDuty(memberId, dateStr, paintCategoryId)
+      const existing = getDuty(memberId, dateStr)
+      // Toggle: if same category already exists, remove it; otherwise set it
+      if (existing?.category_id === paintCategoryId) {
+        useDutyStore.getState().removeDuty(memberId, dateStr)
+      } else {
+        setDuty(memberId, dateStr, paintCategoryId)
+      }
     } else {
       setPicker({ memberId, date: dateStr })
     }
-  }, [paintMode, paintCategoryId, setDuty])
+  }, [paintMode, paintCategoryId, setDuty, getDuty])
 
   // Get CSS color for a category
   const getCatStyle = useCallback((categoryId: string) => {

@@ -65,12 +65,17 @@ export const useTeamStore = create<TeamState>((set, get) => ({
       const teamId = memberships[0].team_id
       const [teamRes, membersRes, rolesRes] = await Promise.all([
         supabaseClient.from('teams').select('*').eq('id', teamId).single(),
-        supabaseClient.from('team_members').select('*').eq('team_id', teamId),
+        supabaseClient.from('team_members').select('*, profiles!user_id(codename)').eq('team_id', teamId),
         supabaseClient.from('dp_roles').select('*').eq('team_id', teamId),
       ])
 
       const team = teamRes.data as Team | null
-      const members = (membersRes.data || []) as TeamMember[]
+      let members = (membersRes.data || []) as any[]
+      // Map profile codename to display_name
+      members = members.map((m) => ({
+        ...m,
+        display_name: m.profiles?.codename || m.user_id?.slice(0, 8) || '...',
+      })) as TeamMember[]
       const roles = (rolesRes.data || []) as DpRole[]
 
       if (team) localStorage.setItem('dp_team', JSON.stringify(team))
@@ -109,7 +114,7 @@ export const useTeamStore = create<TeamState>((set, get) => ({
 
       set({
         team: typedTeam,
-        members: [{ id: '', team_id: typedTeam.id, user_id: session.user.id, joined_at: new Date().toISOString() }],
+        members: [{ id: '', team_id: typedTeam.id, user_id: session.user.id, joined_at: new Date().toISOString(), display_name: session.user.id?.slice(0, 8) }],
       })
 
       // Refresh roles (trigger should have created admin)

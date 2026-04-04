@@ -1,10 +1,10 @@
-import { lazy, Suspense, useState } from 'react'
+import { lazy, Suspense } from 'react'
 import { useUiStore } from '@/stores/uiStore'
 import { useAuthStore } from '@/stores/authStore'
 import { useTeamStore } from '@/stores/teamStore'
 import { useI18n } from '@/i18n'
 import { isSupabaseAvailable } from '@/lib/supabase'
-import { Calendar, Users, Settings, BarChart3, Sun, Moon, LogOut, Menu, X, Globe, WifiOff, HelpCircle } from 'lucide-react'
+import { Calendar, Users, Settings, BarChart3, Sun, Moon, LogOut, Globe, WifiOff, HelpCircle } from 'lucide-react'
 import ToastContainer from '@/components/UI/Toast'
 import HelpPanel from '@/components/UI/HelpPanel'
 import MonthView from '@/components/Calendar/MonthView'
@@ -33,15 +33,13 @@ function CalendarContent() {
 
 export default function Layout() {
   const { t } = useI18n()
-  const { currentView, setCurrentView, theme, toggleTheme, language, setLanguage, sidebarOpen, toggleSidebar } = useUiStore()
+  const { currentView, setCurrentView, theme, toggleTheme, language, setLanguage, helpOpen, setHelpOpen } = useUiStore()
   const signOut = useAuthStore((s) => s.signOut)
   const profile = useAuthStore((s) => s.profile)
   const team = useTeamStore((s) => s.team)
-  const [helpOpen, setHelpOpen] = useState(false)
 
-  // Setup keyboard shortcuts with help key binding
-  const shortcuts = useKeyboardShortcuts(true)
-  shortcuts.find(s => s.key === '?')!.action = () => setHelpOpen(true)
+  // Setup keyboard shortcuts
+  useKeyboardShortcuts(true)
 
   const navItems: Array<{ id: ViewType; icon: typeof Calendar; label: string }> = [
     { id: 'calendar', icon: Calendar, label: t('nav.calendar') },
@@ -59,11 +57,8 @@ export default function Layout() {
         backdropFilter: 'blur(20px)',
       }}>
         <div className="flex items-center justify-between px-4 py-2 max-w-[1400px] mx-auto">
-          {/* Left: Logo + mobile menu */}
+          {/* Left: Logo */}
           <div className="flex items-center gap-3">
-            <button onClick={toggleSidebar} className="md:hidden p-2 rounded-xl" style={{ color: 'var(--text-muted)' }}>
-              {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
-            </button>
             <h1 className="text-lg font-bold" style={{ fontFamily: 'var(--font-display)', color: 'var(--neon-cyan)' }}>
               {t('app.name')}
             </h1>
@@ -129,29 +124,6 @@ export default function Layout() {
           </div>
         </div>
 
-        {/* Mobile navigation */}
-        {sidebarOpen && (
-          <nav className="md:hidden flex gap-1 px-4 pb-2 animate-slide-in-down" role="navigation" aria-label={t('nav.main')}>
-            {navItems.map((item) => {
-              const active = currentView === item.id
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => { setCurrentView(item.id); toggleSidebar() }}
-                  className="flex-1 flex flex-col items-center gap-1 py-2 rounded-xl text-xs font-medium transition-all"
-                  style={{
-                    background: active ? 'var(--surface-active)' : 'transparent',
-                    color: active ? 'var(--neon-cyan)' : 'var(--text-secondary)',
-                  }}
-                  aria-current={active ? 'page' : undefined}
-                >
-                  <item.icon size={20} />
-                  {item.label}
-                </button>
-              )
-            })}
-          </nav>
-        )}
       </header>
 
       {/* Main content */}

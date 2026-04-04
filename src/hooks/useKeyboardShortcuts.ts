@@ -11,7 +11,7 @@ export interface KeyboardShortcut {
 }
 
 export function useKeyboardShortcuts(enabled: boolean = true) {
-  const { setCalendarView, goToToday, togglePaintMode, setCurrentView } = useUiStore()
+  const { setCalendarView, goToToday, togglePaintMode, setCurrentView, toggleHelp } = useUiStore()
   const { canUndo, canRedo, undo, redo } = useDutyStore()
   const { t } = useI18n()
 
@@ -30,20 +30,33 @@ export function useKeyboardShortcuts(enabled: boolean = true) {
     // Undo/Redo
     { key: 'z', modifiers: ['ctrl'], description: t('help.shortcutsList.undo'), action: () => canUndo && undo() },
     { key: 'y', modifiers: ['ctrl'], description: t('help.shortcutsList.redo'), action: () => canRedo && redo() },
-    // Navigation views
+    // Navigation views (number keys, simpler shortcuts)
+    { key: '1', modifiers: [], description: t('help.shortcutsList.navCalendar'), action: () => setCurrentView('calendar') },
+    { key: '2', modifiers: [], description: t('help.shortcutsList.navTeam'), action: () => setCurrentView('team') },
+    { key: '3', modifiers: [], description: t('help.shortcutsList.navManage'), action: () => setCurrentView('manage') },
+    { key: '4', modifiers: [], description: t('help.shortcutsList.navStats'), action: () => setCurrentView('stats') },
+    // Alt+1-4 for compatibility
     { key: '1', modifiers: ['alt'], description: t('help.shortcutsList.navCalendar'), action: () => setCurrentView('calendar') },
     { key: '2', modifiers: ['alt'], description: t('help.shortcutsList.navTeam'), action: () => setCurrentView('team') },
     { key: '3', modifiers: ['alt'], description: t('help.shortcutsList.navManage'), action: () => setCurrentView('manage') },
     { key: '4', modifiers: ['alt'], description: t('help.shortcutsList.navStats'), action: () => setCurrentView('stats') },
+    // Help
+    { key: '?', modifiers: ['shift'], description: t('help.shortcutsList.help'), action: () => toggleHelp() },
   ]
 
   useEffect(() => {
     if (!enabled) return
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Don't intercept if typing in an input
       const target = e.target as HTMLElement
+
+      // Don't intercept if typing in an input or textarea
       if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
+        return
+      }
+
+      // Also check contenteditable elements (but allow if no modifiers for better UX)
+      if (target.contentEditable === 'true' && !e.ctrlKey && !e.metaKey && !e.altKey) {
         return
       }
 
