@@ -159,7 +159,8 @@ export const useDutyStore = create<DutyState>((set, get) => ({
   },
 
   removeMember: async (id) => {
-    const { teamId } = get()
+    const { teamId, members, duties } = get()
+    // Optimistic local removal
     set((s) => ({
       members: s.members.filter((m) => m.id !== id),
       duties: s.duties.filter((d) => d.member_id !== id),
@@ -168,8 +169,20 @@ export const useDutyStore = create<DutyState>((set, get) => ({
     saveLocal(`dp_duties_${teamId}`, get().duties)
 
     if (isSupabaseAvailable() && supabaseClient) {
-      try { await supabaseClient.from('dp_members').delete().eq('id', id) }
-      catch (e) { console.warn('Failed to sync member delete:', e) }
+      try {
+        const { error } = await supabaseClient.from('dp_members').delete().eq('id', id)
+        if (error) {
+          console.error('Supabase delete failed (RLS?):', error.message)
+          // Rollback: re-add member and duties locally since server rejected
+          set({ members, duties })
+          saveLocal(`dp_members_${teamId}`, members)
+          saveLocal(`dp_duties_${teamId}`, duties)
+          throw new Error('DELETE_BLOCKED')
+        }
+      } catch (e) {
+        if (e instanceof Error && e.message === 'DELETE_BLOCKED') throw e
+        console.warn('Failed to sync member delete:', e)
+      }
     }
   },
 

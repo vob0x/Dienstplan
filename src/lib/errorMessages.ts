@@ -6,6 +6,7 @@
 export function getErrorMessage(code: string, t: (key: string) => string): string {
   const errorMap: Record<string, string> = {
     CODENAME_TAKEN: 'auth.errors.codename_taken',
+    SIGNUP_TRIGGER_FAILED: 'auth.errors.signup_trigger_failed',
     EMAIL_CONFIRM_REQUIRED: 'auth.errors.email_confirm_required',
     invalid_credentials: 'auth.errors.invalid_credentials',
     password_mismatch: 'auth.errors.password_mismatch',

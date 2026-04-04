@@ -139,22 +139,38 @@ export const useAuthStore = create<AuthState>((set) => ({
         const { data, error } = await supabaseClient.auth.signUp({ email, password, options: { data: { codename } } })
         if (error) {
           if (error.message?.includes('already registered')) throw new Error('CODENAME_TAKEN')
-          // "Database error saving new user" likely means a trigger (create_dp_user_settings) failed.
-          // Fix: run in Supabase SQL: ALTER FUNCTION create_dp_user_settings() SECURITY DEFINER;
+          // "Database error saving new user" = trigger failed (profile/user_settings insert).
+          // The user was likely created in auth.users despite the trigger error.
+          // Strategy: sign in, then manually create profile + user_settings.
           if (error.message?.includes('Database error')) {
-            console.warn('Signup trigger error. Trying signIn fallback...', error.message)
-            // The user may have been created despite the trigger error — try signing in
+            console.warn('Signup trigger error — attempting recovery...', error.message)
             try {
               const { data: signInData, error: signInError } = await supabaseClient.auth.signInWithPassword({ email, password })
               if (!signInError && signInData.user) {
-                await supabaseClient.from('profiles').upsert({ id: signInData.user.id, codename, updated_at: new Date().toISOString() }, { onConflict: 'id' })
+                // Trigger failed, so manually ensure profile + user_settings exist
+                await supabaseClient.from('profiles').upsert(
+                  { id: signInData.user.id, codename, updated_at: new Date().toISOString() },
+                  { onConflict: 'id' }
+                )
+                await supabaseClient.from('user_settings').upsert(
+                  { user_id: signInData.user.id },
+                  { onConflict: 'user_id' }
+                ).then(() => {}, () => {}) // ignore user_settings errors
                 const profile: Profile = { id: signInData.user.id, codename, created_at: signInData.user.created_at, updated_at: new Date().toISOString() }
                 const session: Session = { user: profile, access_token: signInData.session?.access_token || '', refresh_token: signInData.session?.refresh_token || '' }
                 localStorage.setItem('zeiterfassung_session', JSON.stringify(session))
                 set({ profile, session, loading: false, isAuthenticated: true, needsPassword: false })
                 return
               }
-            } catch { /* fallthrough to throw original error */ }
+              // signIn also failed — user may not have been created at all
+              if (signInError) {
+                console.warn('Recovery signIn failed:', signInError.message)
+                throw new Error('SIGNUP_TRIGGER_FAILED')
+              }
+            } catch (recoveryError) {
+              if (recoveryError instanceof Error && recoveryError.message === 'SIGNUP_TRIGGER_FAILED') throw recoveryError
+              console.warn('Recovery attempt failed:', recoveryError)
+            }
           }
           throw error
         }

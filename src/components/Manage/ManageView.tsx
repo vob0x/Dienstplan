@@ -126,19 +126,25 @@ export default function ManageView() {
 
   const handleDeleteMember = async () => {
     if (!deleteMember) return
-    // Find the member data before deletion for undo
     const memberToDelete = members.find((m) => m.id === deleteMember)
-    await removeMember(deleteMember)
     setDeleteMember(null)
 
-    // Show toast with undo action
-    addToast({
-      type: 'info',
-      message: t('members.removedSuccess'),
-      undoAction: memberToDelete ? async () => {
-        await addMember(memberToDelete.name)
-      } : undefined,
-    })
+    try {
+      await removeMember(deleteMember)
+      addToast({
+        type: 'info',
+        message: t('members.removedSuccess'),
+        undoAction: memberToDelete ? async () => {
+          await addMember(memberToDelete.name)
+        } : undefined,
+      })
+    } catch (e) {
+      if (e instanceof Error && e.message === 'DELETE_BLOCKED') {
+        addToast({ type: 'error', message: t('members.deleteBlocked') })
+      } else {
+        addToast({ type: 'error', message: t('errors.unknown') })
+      }
+    }
   }
 
   const handleAddCategory = async () => {
