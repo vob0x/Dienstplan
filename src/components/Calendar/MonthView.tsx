@@ -126,11 +126,11 @@ export default function MonthView() {
 
           {/* Calendar table */}
           <div className="overflow-x-auto rounded-xl" style={{ border: '1px solid var(--border)', WebkitOverflowScrolling: 'touch' }}>
-            <table className="border-collapse" style={{ minWidth: '800px', width: '100%', height: 'auto' }}>
+            <table className="border-collapse" style={{ minWidth: '700px', width: '100%', tableLayout: 'fixed' }}>
               <thead>
                 <tr>
-                  <th className="sticky left-0 z-10 px-3 py-2 text-left text-xs font-semibold"
-                    style={{ background: 'var(--surface-solid)', color: 'var(--text-secondary)', borderBottom: '1px solid var(--border)', minWidth: '120px' }}>
+                  <th className="sticky left-0 z-10 px-2 py-1 text-left text-xs font-semibold"
+                    style={{ background: 'var(--surface-solid)', color: 'var(--text-secondary)', borderBottom: '1px solid var(--border)', minWidth: '100px' }}>
                     {t('members.title')}
                   </th>
                 {dates.map(({ date, dateStr, dayOfWeek }) => {
@@ -140,20 +140,20 @@ export default function MonthView() {
                   return (
                     <th
                       key={dateStr}
-                      className="px-0.5 py-1.5 text-center text-xs"
+                      className="px-0.5 py-1 text-center"
                       style={{
                         background: isToday ? 'var(--surface-active)' : weekend ? 'var(--weekend-bg)' : 'var(--surface-solid)',
                         borderBottom: '1px solid var(--border)',
                         color: isToday ? 'var(--neon-cyan)' : holiday ? 'var(--neon-red)' : weekend ? 'var(--text-muted)' : 'var(--text-secondary)',
-                        minWidth: '36px',
+                        minWidth: '30px',
                       }}
                       title={holiday ? (language === 'fr' ? holiday.name_fr : holiday.name) : undefined}
                     >
-                      <div className="font-semibold" style={{ fontFamily: 'var(--font-display)', fontSize: '0.7rem' }}>
+                      <div className="font-semibold" style={{ fontFamily: 'var(--font-display)', fontSize: '0.6rem' }}>
                         {dayNames[dayOfWeek === 0 ? 6 : dayOfWeek - 1] || ''}
                       </div>
-                      <div className="font-bold" style={{ fontSize: '0.85rem' }}>{date.getDate()}</div>
-                      {holiday && <div className="w-1.5 h-1.5 rounded-full mx-auto mt-0.5" style={{ background: 'var(--neon-red)' }} />}
+                      <div className="font-bold" style={{ fontSize: '0.75rem', lineHeight: 1.1 }}>{date.getDate()}</div>
+                      {holiday && <div className="w-1 h-1 rounded-full mx-auto mt-px" style={{ background: 'var(--neon-red)' }} />}
                     </th>
                   )
                 })}
@@ -163,15 +163,15 @@ export default function MonthView() {
               {members
                 .filter((m) => m.is_active && m.name.toLowerCase().includes(memberSearch.toLowerCase()))
                 .map((member) => (
-                <tr key={member.id} style={{ height: '36px' }}>
-                  <td className="sticky left-0 z-10 px-3 text-sm font-medium truncate"
+                <tr key={member.id} style={{ height: '28px' }}>
+                  <td className="sticky left-0 z-10 px-2 text-xs font-medium truncate"
                     style={{
                       background: 'var(--surface-solid)',
                       color: 'var(--text)',
                       borderBottom: '1px solid var(--border-light)',
-                      maxWidth: '140px',
-                      height: '36px',
-                      lineHeight: '36px',
+                      maxWidth: '120px',
+                      height: '28px',
+                      lineHeight: '28px',
                     }}>
                     {member.name}
                   </td>
@@ -190,24 +190,19 @@ export default function MonthView() {
                         style={{
                           borderBottom: '1px solid var(--border-light)',
                           cursor: 'pointer',
-                          padding: '2px',
-                          height: '36px',
+                          padding: '1px 2px',
+                          height: '28px',
                           textAlign: 'center',
                           verticalAlign: 'middle',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          justifyContent: 'center',
-                          alignItems: 'center',
-                          gap: '1px',
-                          background: allDuties.length > 0 ? `${allDuties[0] && categories.find((c) => c.id === allDuties[0].category_id) ? categories.find((c) => c.id === allDuties[0].category_id)!.color : 'transparent'}22` : 'transparent',
-                          borderLeft: allDuties.length > 0 ? `3px solid ${allDuties[0] && categories.find((c) => c.id === allDuties[0].category_id) ? categories.find((c) => c.id === allDuties[0].category_id)!.color : 'transparent'}` : 'transparent',
+                          background: allDuties.length > 0 ? `${categories.find((c) => c.id === allDuties[0]?.category_id)?.color || 'transparent'}22` : 'transparent',
+                          borderLeft: allDuties.length > 0 ? `3px solid ${categories.find((c) => c.id === allDuties[0]?.category_id)?.color || 'transparent'}` : undefined,
                         }}
                         title={allDuties.map((d) => categories.find((c) => c.id === d.category_id)?.name || '').join(', ')}
                       >
                         {allDuties.map((duty) => {
                           const cat = categories.find((c) => c.id === duty.category_id)
                           return cat ? (
-                            <span key={duty.id} style={{ fontSize: '0.75rem', fontWeight: 700, fontFamily: 'var(--font-mono)', color: cat.color }}>
+                            <span key={duty.id} style={{ fontSize: '0.65rem', fontWeight: 700, fontFamily: 'var(--font-mono)', color: cat.color, marginRight: '1px' }}>
                               {cat.letter}
                             </span>
                           ) : null
