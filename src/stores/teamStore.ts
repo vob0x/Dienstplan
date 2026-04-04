@@ -65,16 +65,29 @@ export const useTeamStore = create<TeamState>((set, get) => ({
       const teamId = memberships[0].team_id
       const [teamRes, membersRes, rolesRes] = await Promise.all([
         supabaseClient.from('teams').select('*').eq('id', teamId).single(),
-        supabaseClient.from('team_members').select('*, profiles!user_id(codename)').eq('team_id', teamId),
+        supabaseClient.from('team_members').select('*').eq('team_id', teamId),
         supabaseClient.from('dp_roles').select('*').eq('team_id', teamId),
       ])
 
       const team = teamRes.data as Team | null
       let members = (membersRes.data || []) as any[]
-      // Map profile codename to display_name
-      members = members.map((m) => ({
+
+      // Fetch codenames separately (the FK join profiles!user_id may not exist)
+      const userIds = members.map((m: any) => m.user_id).filter(Boolean)
+      let profileMap: Record<string, string> = {}
+      if (userIds.length > 0) {
+        const { data: profiles } = await supabaseClient
+          .from('profiles')
+          .select('id, codename')
+          .in('id', userIds)
+        if (profiles) {
+          profileMap = Object.fromEntries(profiles.map((p: any) => [p.id, p.codename]))
+        }
+      }
+
+      members = members.map((m: any) => ({
         ...m,
-        display_name: m.profiles?.codename || m.user_id?.slice(0, 8) || '...',
+        display_name: profileMap[m.user_id] || m.user_id?.slice(0, 8) || '...',
       })) as TeamMember[]
       const roles = (rolesRes.data || []) as DpRole[]
 
