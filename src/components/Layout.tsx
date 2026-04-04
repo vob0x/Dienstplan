@@ -1,10 +1,12 @@
-import { lazy, Suspense } from 'react'
+import { lazy, Suspense, useState } from 'react'
 import { useUiStore } from '@/stores/uiStore'
 import { useAuthStore } from '@/stores/authStore'
 import { useTeamStore } from '@/stores/teamStore'
 import { useI18n } from '@/i18n'
 import { isSupabaseAvailable } from '@/lib/supabase'
-import { Calendar, Users, Settings, BarChart3, Sun, Moon, LogOut, Globe, WifiOff, HelpCircle } from 'lucide-react'
+import { useDutyStore } from '@/stores/dutyStore'
+import { useSwapStore } from '@/stores/swapStore'
+import { Calendar, Users, Settings, BarChart3, Sun, Moon, LogOut, Globe, WifiOff, HelpCircle, RefreshCw } from 'lucide-react'
 import ToastContainer from '@/components/UI/Toast'
 import HelpPanel from '@/components/UI/HelpPanel'
 import MonthView from '@/components/Calendar/MonthView'
@@ -37,6 +39,20 @@ export default function Layout() {
   const signOut = useAuthStore((s) => s.signOut)
   const profile = useAuthStore((s) => s.profile)
   const team = useTeamStore((s) => s.team)
+  const fetchAll = useDutyStore((s) => s.fetchAll)
+  const fetchSwaps = useSwapStore((s) => s.fetchSwaps)
+  const [refreshing, setRefreshing] = useState(false)
+
+  const handleRefresh = async () => {
+    if (!team || refreshing) return
+    setRefreshing(true)
+    try {
+      await fetchAll(team.id)
+      await fetchSwaps(team.id)
+    } finally {
+      setRefreshing(false)
+    }
+  }
 
   // Setup keyboard shortcuts
   useKeyboardShortcuts(true)
@@ -102,6 +118,11 @@ export default function Layout() {
                 <span className="hidden sm:inline">{t('ui.offline')}</span>
               </div>
             )}
+            <button onClick={handleRefresh} disabled={refreshing}
+              className="p-2 rounded-xl transition-colors" style={{ color: refreshing ? 'var(--neon-cyan)' : 'var(--text-secondary)' }}
+              title={t('ui.refresh')}>
+              <RefreshCw size={16} className={refreshing ? 'animate-spin' : ''} />
+            </button>
             <button onClick={() => setHelpOpen(true)} className="p-2 rounded-xl transition-colors" style={{ color: 'var(--text-secondary)' }} title={t('help.title') + ' (?)'}>
               <HelpCircle size={18} />
             </button>

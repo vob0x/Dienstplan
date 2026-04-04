@@ -7,7 +7,7 @@ export const fr = {
     codename: 'Pseudonyme', password: 'Mot de passe', passwordConfirm: 'Confirmer le mot de passe',
     codenamePlaceholder: 'Choisir un pseudonyme', passwordPlaceholder: 'Au moins 6 caractères',
     noAccount: 'Pas encore de compte?', hasAccount: 'Déjà inscrit?',
-    errors: { codename_taken: 'Pseudonyme déjà pris', invalid_credentials: 'Pseudonyme ou mot de passe incorrect', password_mismatch: 'Les mots de passe ne correspondent pas', password_short: 'Au moins 6 caractères' },
+    errors: { codename_taken: 'Pseudonyme déjà pris', invalid_credentials: 'Pseudonyme ou mot de passe incorrect', password_mismatch: 'Les mots de passe ne correspondent pas', password_short: 'Au moins 6 caractères', email_not_confirmed: 'Inscription échouée. Veuillez réessayer.' },
   },
   calendar: {
     today: "Aujourd'hui", weekNumber: 'Sem', noEntries: 'Aucune entrée',
@@ -94,10 +94,12 @@ export const fr = {
     overlapDetail: 'Les collaborateurs suivants sont en vacances le même jour:',
     offline: 'Mode hors ligne',
     online: 'Connecté',
+    refresh: 'Actualiser les données',
   },
   errors: {
     network: 'Erreur réseau. Veuillez réessayer plus tard.',
     unknown: 'Une erreur est survenue.',
+    database: 'Erreur de base de données. Veuillez contacter l\'administrateur.',
     parseError: 'Erreur lors du traitement des données.',
     invalidFormat: 'Format invalide.',
   },

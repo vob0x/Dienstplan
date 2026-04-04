@@ -164,10 +164,34 @@ export const useAuthStore = create<AuthState>((set) => ({
           try {
             await supabaseClient.from('profiles').upsert({ id: data.user.id, codename, updated_at: new Date().toISOString() }, { onConflict: 'id' })
           } catch (e) { console.warn('Profile upsert warning:', e) }
-          const profile: Profile = { id: data.user.id, codename, created_at: data.user.created_at || new Date().toISOString(), updated_at: new Date().toISOString() }
-          const session: Session = { user: profile, access_token: data.session?.access_token || '', refresh_token: data.session?.refresh_token || '' }
-          localStorage.setItem('zeiterfassung_session', JSON.stringify(session))
-          set({ profile, session, loading: false, isAuthenticated: true, needsPassword: false })
+
+          // If session exists (email confirmation disabled), use it directly
+          if (data.session) {
+            const profile: Profile = { id: data.user.id, codename, created_at: data.user.created_at || new Date().toISOString(), updated_at: new Date().toISOString() }
+            const session: Session = { user: profile, access_token: data.session.access_token, refresh_token: data.session.refresh_token || '' }
+            localStorage.setItem('zeiterfassung_session', JSON.stringify(session))
+            set({ profile, session, loading: false, isAuthenticated: true, needsPassword: false })
+            return
+          }
+
+          // No session = email confirmation required. Since we use fake emails,
+          // auto-sign-in immediately after successful signup.
+          console.log('No session after signUp (email confirmation?). Auto-signing in...')
+          const { data: signInData, error: signInError } = await supabaseClient.auth.signInWithPassword({
+            email: codeToEmail(codename), password
+          })
+          if (!signInError && signInData.user && signInData.session) {
+            const profile: Profile = { id: signInData.user.id, codename, created_at: signInData.user.created_at, updated_at: new Date().toISOString() }
+            const session: Session = { user: profile, access_token: signInData.session.access_token, refresh_token: signInData.session.refresh_token || '' }
+            localStorage.setItem('zeiterfassung_session', JSON.stringify(session))
+            set({ profile, session, loading: false, isAuthenticated: true, needsPassword: false })
+            return
+          }
+          // If auto-sign-in also fails, throw descriptive error
+          if (signInError) {
+            console.warn('Auto-sign-in after signup failed:', signInError.message)
+            throw new Error(signInError.message)
+          }
           return
         }
       }

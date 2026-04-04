@@ -526,6 +526,7 @@ export const useDutyStore = create<DutyState>((set, get) => ({
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let dutiesChannel: any = null
 let visibilityHandler: (() => void) | null = null
+let pollingInterval: ReturnType<typeof setInterval> | null = null
 
 function syncLocalStorage() {
   const { teamId, members, categories, duties } = useDutyStore.getState()
@@ -610,10 +611,13 @@ export function subscribeToDutySync() {
     })
     .subscribe((status: string) => {
       console.log('[Realtime]', status)
-      // On reconnect after error, do a full re-fetch
       if (status === 'SUBSCRIBED') {
         console.log('[Realtime] Connected — fetching latest data')
         useDutyStore.getState().fetchAll(teamId)
+      }
+      if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+        console.warn('[Realtime] Connection issue — starting polling fallback')
+        startPolling(teamId)
       }
     })
 
@@ -630,6 +634,18 @@ export function subscribeToDutySync() {
     }
     document.addEventListener('visibilitychange', visibilityHandler)
   }
+
+  // Polling fallback: every 30s re-fetch as safety net for when Realtime is not working
+  startPolling(teamId)
+}
+
+function startPolling(teamId: string) {
+  if (pollingInterval) clearInterval(pollingInterval)
+  pollingInterval = setInterval(() => {
+    if (document.visibilityState === 'visible') {
+      useDutyStore.getState().fetchAll(teamId)
+    }
+  }, 30000) // 30 seconds
 }
 
 export function unsubscribeFromDutySync() {
@@ -640,5 +656,9 @@ export function unsubscribeFromDutySync() {
   if (visibilityHandler) {
     document.removeEventListener('visibilitychange', visibilityHandler)
     visibilityHandler = null
+  }
+  if (pollingInterval) {
+    clearInterval(pollingInterval)
+    pollingInterval = null
   }
 }

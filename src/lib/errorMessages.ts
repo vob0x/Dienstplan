@@ -14,6 +14,16 @@ export function getErrorMessage(code: string, t: (key: string) => string): strin
     network_error: 'errors.network',
   }
 
-  const key = errorMap[code] || 'errors.unknown'
-  return t(key)
+  // Direct match
+  if (errorMap[code]) return t(errorMap[code])
+
+  // Partial match for Supabase error messages
+  const lc = code.toLowerCase()
+  if (lc.includes('already registered') || lc.includes('already been registered')) return t('auth.errors.codename_taken')
+  if (lc.includes('invalid login') || lc.includes('invalid_credentials')) return t('auth.errors.invalid_credentials')
+  if (lc.includes('database error')) return t('errors.database')
+  if (lc.includes('fetch') || lc.includes('network') || lc.includes('failed to fetch')) return t('errors.network')
+  if (lc.includes('email not confirmed')) return t('auth.errors.email_not_confirmed')
+
+  return t('errors.unknown')
 }
