@@ -57,16 +57,34 @@ export const de = {
     youIndicator: 'du',
   },
   swaps: {
-    title: 'Schicht-Tausch', request: 'Tausch anfragen', accept: 'Annehmen', reject: 'Ablehnen',
-    approve: 'Genehmigen', cancel: 'Stornieren', delete: 'Löschen',
-    status: { pending: 'Ausstehend', accepted: 'Angenommen', rejected: 'Abgelehnt', approved: 'Genehmigt', completed: 'Abgeschlossen', cancelled: 'Storniert' },
+    title: 'Schicht-Tausch', request: 'Tausch anfragen', newRequest: 'Neue Tausch-Anfrage',
+    accept: 'Annehmen', reject: 'Ablehnen', approve: 'Genehmigen',
+    cancel: 'Stornieren', delete: 'Löschen', confirm: 'Absenden',
+    // Sections
+    incoming: 'Eingehende Anfragen', outgoing: 'Meine Anfragen',
+    approvalQueue: 'Genehmigungen', history: 'Verlauf',
+    // Status labels
+    status: {
+      pendingResponder: 'Wartet auf Antwort', accepted: 'Angenommen',
+      pendingApproval: 'Wartet auf Genehmigung', approved: 'Genehmigt',
+      rejectedResponder: 'Abgelehnt', rejectedApproval: 'Nicht genehmigt', cancelled: 'Storniert',
+    },
+    // Toast messages
+    requestSent: 'Tausch-Anfrage gesendet', accepted: 'Anfrage angenommen',
+    rejected: 'Anfrage abgelehnt', approvedMsg: 'Tausch genehmigt',
+    rejectedApprovalMsg: 'Tausch nicht genehmigt', cancelled: 'Anfrage storniert', deleted: 'Eintrag gelöscht',
+    // Modal steps
+    selectDate: 'Datum wählen', selectDuty: 'Dienst wählen',
+    selectRequester: 'Anfragender Mitarbeiter', selectPartner: 'Tauschpartner wählen',
+    selectTarget: 'Ziel-Mitarbeiter', selectTargetDuty: 'Dienst des Partners wählen',
+    noDutyOnDate: 'Kein Dienst an diesem Tag eingetragen.',
+    noCategoryHint: 'Ohne Auswahl wird der gesamte Tag getauscht.',
+    // Types
+    typeSwap: 'Tausch', typeReassignment: 'Zuweisung',
+    reassignmentHint: 'Einseitige Zuweisung — kein Rücktausch.',
+    // Other
     noSwaps: 'Keine offenen Tausch-Anfragen.',
-    requestHint: 'Wähle einen Mitarbeiter und ein Datum zum Tauschen.',
-    requestFrom: 'Anfrage von',
-    swapWith: 'Tausch mit',
-    date: 'Datum',
     createError: 'Fehler beim Erstellen der Anfrage',
-    deleted: 'Eintrag gelöscht',
   },
   approvals: {
     title: 'Genehmigungen', approve: 'Genehmigen', reject: 'Ablehnen',
@@ -80,14 +98,16 @@ export const de = {
   import: {
     title: 'Importieren', smartImport: 'Smart Import', jsonBackup: 'JSON-Backup', excelImport: 'Excel-Import',
     smartImportDesc: 'Freitext-Eingabe → Kalender', parse: 'Analysieren', preview: 'Vorschau', apply: 'Übernehmen',
-    selectMember: 'Mitarbeiter wählen', textPlaceholder: 'z.B. Ferien 03.02.2026 - 15.03.2026, Pikett 1. April bis 18. April',
-    noMatch: 'Kein Diensttyp erkannt', entriesFound: 'Einträge gefunden', conflict: 'Konflikt', importSuccess: 'Einträge importiert',
+    selectMember: 'Mitarbeiter wählen',
+    textPlaceholder: 'z.B. Ferien 03.02.2026-15.03.2026\nElternurlaub 3.1.26 bis 10.1.26\nPikett 1. April bis 18. April\nKrank 5.3.26',
+    noMatch: 'Kein Diensttyp erkannt. Verwende den Namen oder Buchstaben deiner Diensttypen.',
+    entriesFound: 'Einträge gefunden', conflict: 'Konflikt', importSuccess: 'Einträge importiert',
   },
   export: { title: 'Exportieren', excel: 'Excel', json: 'JSON-Backup', print: 'Drucken', fullYear: 'Ganzes Jahr', statistics: 'Statistik', backupDescription: 'Komplettes Backup' },
   ui: {
     loading: 'Laden...', save: 'Speichern', cancel: 'Abbrechen', delete: 'Löschen',
     confirm: 'Bestätigen', close: 'Schliessen', search: 'Suchen', ok: 'OK',
-    undo: 'Rückgängig', redo: 'Wiederherstellen', previous: 'Zurück', next: 'Weiter',
+    undo: 'Rückgängig', redo: 'Wiederherstellen', previous: 'Zurück', next: 'Weiter', back: 'Zurück', optional: 'optional',
     theme: { dark: 'Dunkel', light: 'Hell' },
     language: { de: 'Deutsch', fr: 'Français' },
     overlap: 'Überlappung erkannt',
@@ -143,6 +163,12 @@ export const de = {
       step3Title: 'Genehmigung',
       step3: 'Admin oder Planer genehmigen den Tausch. Der Schichtplan wird automatisch aktualisiert.',
     },
+  },
+  roles: {
+    noAccess: 'Kein Zugriff',
+    noAccessHint: 'Du hast nicht die nötige Berechtigung für diesen Bereich.',
+    adminOnly: 'Nur für Admins',
+    plannerOnly: 'Nur für Planer & Admins',
   },
   days: ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'],
   daysLong: ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag', 'Sonntag'],

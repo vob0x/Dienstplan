@@ -85,21 +85,38 @@ export interface DpRole {
   created_at: string
 }
 
+// Swap statuses — lifecycle:
+//   swap:          pending_responder → accepted → pending_approval → approved
+//   reassignment:  pending_approval → approved (admin skips responder step)
+export type SwapStatus =
+  | 'pending_responder'   // Waiting for target to accept/reject
+  | 'accepted'            // Target accepted, now needs admin approval
+  | 'pending_approval'    // Marked for admin review (reassignment starts here)
+  | 'approved'            // Admin approved — duties were swapped
+  | 'rejected_responder'  // Target rejected
+  | 'rejected_approval'   // Admin rejected
+  | 'cancelled'           // Requester cancelled
+
+export type SwapType = 'swap' | 'reassignment'
+
 export interface DpShiftSwap {
   id: string
   team_id: string
+  swap_type: SwapType
   requester_member_id: string
   target_member_id: string
-  requester_duty_id: string
-  target_duty_id?: string | null
+  /** Category the requester offers to swap (from their duties on target_date) */
+  requester_category_id: string | null
+  /** Category the target has (on target_date) — null if no duty */
+  target_category_id: string | null
   target_date: string
-  status: 'pending' | 'accepted' | 'rejected' | 'approved' | 'completed' | 'cancelled'
-  requester_note?: string | null
-  responder_note?: string | null
-  admin_note?: string | null
-  accepted_at?: string | null
-  approved_by?: string | null
-  approved_at?: string | null
+  status: SwapStatus
+  requester_note: string | null
+  responder_note: string | null
+  admin_note: string | null
+  accepted_at: string | null
+  approved_by: string | null
+  approved_at: string | null
   created_at: string
   updated_at: string
 }

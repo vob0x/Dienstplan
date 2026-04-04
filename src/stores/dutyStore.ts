@@ -622,6 +622,11 @@ export function subscribeToDutySync() {
         }
       }
     })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'dp_shift_swaps', filter: `team_id=eq.${teamId}` }, async () => {
+      // On any swap change, re-fetch all swaps for simplicity
+      const { useSwapStore } = await import('@/stores/swapStore')
+      await useSwapStore.getState().fetchSwaps(teamId)
+    })
     .subscribe((status: string) => {
       console.log('[Realtime]', status)
       if (status === 'SUBSCRIBED') {
@@ -646,6 +651,8 @@ export function subscribeToDutySync() {
           await useDutyStore.getState().fetchAll(currentTeamId)
           const { syncTeamMembersToDpMembers } = await import('@/lib/syncTeamMembers')
           await syncTeamMembersToDpMembers()
+          const { useSwapStore } = await import('@/stores/swapStore')
+          await useSwapStore.getState().fetchSwaps(currentTeamId)
         }
       }
     }
@@ -665,6 +672,8 @@ function startPolling(teamId: string) {
       await useDutyStore.getState().fetchAll(teamId)
       const { syncTeamMembersToDpMembers } = await import('@/lib/syncTeamMembers')
       await syncTeamMembersToDpMembers()
+      const { useSwapStore } = await import('@/stores/swapStore')
+      await useSwapStore.getState().fetchSwaps(teamId)
     }
   }, 30000) // 30 seconds
 }

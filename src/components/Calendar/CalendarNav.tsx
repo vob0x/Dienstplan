@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useUiStore } from '@/stores/uiStore'
 import { useI18n } from '@/i18n'
 import { useDutyStore } from '@/stores/dutyStore'
+import { usePermissions } from '@/lib/permissions'
 import { parseDate } from '@/lib/utils'
 import { ChevronLeft, ChevronRight, Paintbrush, Undo2, Redo2 } from 'lucide-react'
 import ExportMenu from './ExportMenu'
@@ -16,6 +17,7 @@ export default function CalendarNav() {
     paintMode, togglePaintMode, paintCategoryId, setPaintCategoryId,
   } = useUiStore()
   const { categories, canUndo, canRedo, undo, redo } = useDutyStore()
+  const { canUsePaintMode, isPlanner } = usePermissions()
   const months = tArray('months')
 
   const views: CalendarView[] = ['day', 'week', 'month', 'year']
@@ -131,46 +133,52 @@ export default function CalendarNav() {
 
         {/* Tools */}
         <div className="flex items-center gap-1 flex-wrap" role="toolbar" aria-label={t('ui.tools')}>
-          {/* Undo/Redo */}
-          <button onClick={undo} disabled={!canUndo} className="p-2 rounded-xl transition-colors"
-            style={{ color: canUndo ? 'var(--text-secondary)' : 'var(--text-muted)', opacity: canUndo ? 1 : 0.4 }}
-            title={`${t('ui.undo')} (Ctrl+Z)`}
-            aria-label={t('ui.undo')}>
-            <Undo2 size={18} />
-          </button>
-          <button onClick={redo} disabled={!canRedo} className="p-2 rounded-xl transition-colors"
-            style={{ color: canRedo ? 'var(--text-secondary)' : 'var(--text-muted)', opacity: canRedo ? 1 : 0.4 }}
-            title={`${t('ui.redo')} (Ctrl+Y)`}
-            aria-label={t('ui.redo')}>
-            <Redo2 size={18} />
-          </button>
+          {/* Undo/Redo — planner+ only */}
+          {isPlanner && (
+            <>
+              <button onClick={undo} disabled={!canUndo} className="p-2 rounded-xl transition-colors"
+                style={{ color: canUndo ? 'var(--text-secondary)' : 'var(--text-muted)', opacity: canUndo ? 1 : 0.4 }}
+                title={`${t('ui.undo')} (Ctrl+Z)`}
+                aria-label={t('ui.undo')}>
+                <Undo2 size={18} />
+              </button>
+              <button onClick={redo} disabled={!canRedo} className="p-2 rounded-xl transition-colors"
+                style={{ color: canRedo ? 'var(--text-secondary)' : 'var(--text-muted)', opacity: canRedo ? 1 : 0.4 }}
+                title={`${t('ui.redo')} (Ctrl+Y)`}
+                aria-label={t('ui.redo')}>
+                <Redo2 size={18} />
+              </button>
+            </>
+          )}
 
-          {/* Import menu */}
-          <ImportMenu />
+          {/* Import menu — planner+ only */}
+          {isPlanner && <ImportMenu />}
 
-          {/* Export menu */}
+          {/* Export menu — everyone can export */}
           <ExportMenu />
 
-          {/* Paint mode */}
-          <button
-            onClick={togglePaintMode}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-all"
-            style={{
-              background: paintMode ? 'var(--neon-cyan)' : 'var(--surface)',
-              color: paintMode ? '#0A0B0F' : 'var(--text-secondary)',
-              border: paintMode ? 'none' : '1px solid var(--border)',
-            }}
-            title={`${paintMode ? t('calendar.exitPaint') : t('calendar.paintMode')} (P)`}
-            aria-pressed={paintMode}
-          >
-            <Paintbrush size={16} />
-            {paintMode ? t('calendar.exitPaint') : t('calendar.paintMode')}
-          </button>
+          {/* Paint mode — planner+ only */}
+          {canUsePaintMode && (
+            <button
+              onClick={togglePaintMode}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-all"
+              style={{
+                background: paintMode ? 'var(--neon-cyan)' : 'var(--surface)',
+                color: paintMode ? '#0A0B0F' : 'var(--text-secondary)',
+                border: paintMode ? 'none' : '1px solid var(--border)',
+              }}
+              title={`${paintMode ? t('calendar.exitPaint') : t('calendar.paintMode')} (P)`}
+              aria-pressed={paintMode}
+            >
+              <Paintbrush size={16} />
+              {paintMode ? t('calendar.exitPaint') : t('calendar.paintMode')}
+            </button>
+          )}
         </div>
       </div>
 
       {/* Paint mode bar */}
-      {paintMode && (
+      {paintMode && canUsePaintMode && (
         <div className="flex items-center gap-2 p-3 rounded-xl animate-slide-in-down"
           style={{ background: 'var(--surface-active)', border: '1px solid var(--border-hover)' }}>
           <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>{t('calendar.paintModeHint')} {t('calendar.paintModeEscHint')}</span>

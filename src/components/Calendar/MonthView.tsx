@@ -2,7 +2,7 @@ import { useState, useMemo, useCallback } from 'react'
 import { useUiStore } from '@/stores/uiStore'
 import { useDutyStore } from '@/stores/dutyStore'
 import { useI18n } from '@/i18n'
-// removeDuty is accessed via useDutyStore.getState() in the callback
+import { usePermissions } from '@/lib/permissions'
 import { getHolidays, isHoliday, isWeekend } from '@/lib/holidays'
 import { daysInMonth, toDateStr } from '@/lib/utils'
 import CalendarNav from './CalendarNav'
@@ -13,6 +13,8 @@ export default function MonthView() {
   const { t, tArray, language } = useI18n()
   const { year, month, paintMode, paintCategoryId } = useUiStore()
   const { members, categories, setDuty, getDuties } = useDutyStore()
+
+  const { canEditDuty, canUsePaintMode } = usePermissions()
 
   const [picker, setPicker] = useState<{ memberId: string; date: string } | null>(null)
   const [memberSearch, setMemberSearch] = useState('')
@@ -35,7 +37,10 @@ export default function MonthView() {
   }, [year, month])
 
   const handleCellClick = useCallback((memberId: string, dateStr: string) => {
-    if (paintMode && paintCategoryId) {
+    // Permission check: can this user edit this member's duties?
+    if (!canEditDuty(memberId)) return
+
+    if (paintMode && paintCategoryId && canUsePaintMode) {
       const duties = getDuties(memberId, dateStr)
       // Toggle: if category already exists, remove it; otherwise add it
       const hasCategory = duties.some((d) => d.category_id === paintCategoryId)
@@ -47,7 +52,7 @@ export default function MonthView() {
     } else {
       setPicker({ memberId, date: dateStr })
     }
-  }, [paintMode, paintCategoryId, setDuty, getDuties])
+  }, [paintMode, paintCategoryId, setDuty, getDuties, canEditDuty, canUsePaintMode])
 
   // Detect vacation overlaps: dates where 2+ members have a requires_approval category (e.g. Ferien)
   const overlaps = useMemo(() => {
@@ -182,15 +187,16 @@ export default function MonthView() {
                     const isToday = dateStr === todayStr
                     const hasPending = allDuties.some((d) => d.approval_status === 'pending')
                     const hasRejected = allDuties.some((d) => d.approval_status === 'rejected')
+                    const editable = canEditDuty(member.id)
 
                     return (
                       <td
                         key={dateStr}
                         onClick={() => handleCellClick(member.id, dateStr)}
-                        className={`duty-cell ${isToday ? 'today' : ''} ${weekend ? 'weekend' : ''} ${paintMode ? 'paint-highlight' : ''} ${hasPending ? 'approval-pending' : ''} ${hasRejected ? 'approval-rejected' : ''}`}
+                        className={`duty-cell ${isToday ? 'today' : ''} ${weekend ? 'weekend' : ''} ${paintMode && canUsePaintMode ? 'paint-highlight' : ''} ${hasPending ? 'approval-pending' : ''} ${hasRejected ? 'approval-rejected' : ''}`}
                         style={{
                           borderBottom: '1px solid var(--border-light)',
-                          cursor: 'pointer',
+                          cursor: editable ? 'pointer' : 'default',
                           padding: '1px 2px',
                           height: '28px',
                           textAlign: 'center',

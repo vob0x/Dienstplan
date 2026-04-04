@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react'
 import { useUiStore } from '@/stores/uiStore'
 import { useDutyStore } from '@/stores/dutyStore'
 import { useI18n } from '@/i18n'
+import { usePermissions } from '@/lib/permissions'
 import { getHolidays, isHoliday, isWeekend } from '@/lib/holidays'
 import { parseDate } from '@/lib/utils'
 import CalendarNav from './CalendarNav'
@@ -12,6 +13,7 @@ export default function DayView() {
   const { t, tArray, language } = useI18n()
   const { dayDate } = useUiStore()
   const { members, categories, getDuty } = useDutyStore()
+  const { canEditDuty } = usePermissions()
   const [picker, setPicker] = useState<{ memberId: string } | null>(null)
   const selectedMember = members.find((m) => m.id === picker?.memberId)
 
@@ -47,11 +49,13 @@ export default function DayView() {
           return (
             <button
               key={member.id}
-              onClick={() => setPicker({ memberId: member.id })}
+              onClick={() => canEditDuty(member.id) && setPicker({ memberId: member.id })}
               className="w-full flex items-center gap-4 px-4 py-3 rounded-xl transition-all text-left"
               style={{
                 background: cat ? `${cat.color}12` : 'var(--surface)',
                 border: `1px solid ${cat ? `${cat.color}33` : 'var(--border)'}`,
+                opacity: canEditDuty(member.id) ? 1 : 0.7,
+                cursor: canEditDuty(member.id) ? 'pointer' : 'default',
               }}
             >
               <div className="w-10 h-10 rounded-xl flex items-center justify-center"

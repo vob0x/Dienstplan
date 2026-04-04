@@ -7,9 +7,11 @@ import { isSupabaseAvailable } from '@/lib/supabase'
 import { useDutyStore } from '@/stores/dutyStore'
 import { useSwapStore } from '@/stores/swapStore'
 import { syncTeamMembersToDpMembers } from '@/lib/syncTeamMembers'
+import { usePermissions } from '@/lib/permissions'
 import { Calendar, Users, Settings, BarChart3, Sun, Moon, LogOut, Globe, WifiOff, HelpCircle, RefreshCw } from 'lucide-react'
 import ToastContainer from '@/components/UI/Toast'
 import HelpPanel from '@/components/UI/HelpPanel'
+import RoleGuard from '@/components/UI/RoleGuard'
 import MonthView from '@/components/Calendar/MonthView'
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
 import type { ViewType } from '@/types'
@@ -62,12 +64,17 @@ export default function Layout() {
   // Setup keyboard shortcuts
   useKeyboardShortcuts(true)
 
-  const navItems: Array<{ id: ViewType; icon: typeof Calendar; label: string }> = [
+  const { canAccessView } = usePermissions()
+
+  const allNavItems: Array<{ id: ViewType; icon: typeof Calendar; label: string }> = [
     { id: 'calendar', icon: Calendar, label: t('nav.calendar') },
     { id: 'team', icon: Users, label: t('nav.team') },
     { id: 'manage', icon: Settings, label: t('nav.manage') },
     { id: 'stats', icon: BarChart3, label: t('nav.stats') },
   ]
+
+  // Filter nav items based on user role
+  const navItems = allNavItems.filter((item) => canAccessView(item.id))
 
   return (
     <div className="h-screen flex flex-col" style={{ background: 'var(--bg)' }}>
@@ -158,8 +165,16 @@ export default function Layout() {
         <Suspense fallback={<div className="flex items-center justify-center h-64"><div className="w-8 h-8 border-2 rounded-full animate-spin" style={{ borderColor: 'var(--border)', borderTopColor: 'var(--neon-cyan)' }} /></div>}>
           {currentView === 'calendar' && <CalendarContent />}
           {currentView === 'team' && <TeamView />}
-          {currentView === 'manage' && <ManageView />}
-          {currentView === 'stats' && <StatsView />}
+          {currentView === 'manage' && (
+            <RoleGuard minRole="planner" showDenied>
+              <ManageView />
+            </RoleGuard>
+          )}
+          {currentView === 'stats' && (
+            <RoleGuard minRole="planner" showDenied>
+              <StatsView />
+            </RoleGuard>
+          )}
         </Suspense>
       </main>
 

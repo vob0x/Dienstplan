@@ -2,6 +2,7 @@ import { useState, useMemo, useCallback } from 'react'
 import { useUiStore } from '@/stores/uiStore'
 import { useDutyStore } from '@/stores/dutyStore'
 import { useI18n } from '@/i18n'
+import { usePermissions } from '@/lib/permissions'
 import { getHolidays, isHoliday, isWeekend } from '@/lib/holidays'
 import { toDateStr, getWeekNumber, parseDate } from '@/lib/utils'
 import CalendarNav from './CalendarNav'
@@ -11,6 +12,7 @@ export default function WeekView() {
   const { t, tArray, language } = useI18n()
   const { weekStart, paintMode, paintCategoryId } = useUiStore()
   const { members, categories, getDuties, setDuty } = useDutyStore()
+  const { canEditDuty, canUsePaintMode } = usePermissions()
   const [picker, setPicker] = useState<{ memberId: string; date: string } | null>(null)
   const selectedMember = members.find((m) => m.id === picker?.memberId)
 
@@ -36,12 +38,13 @@ export default function WeekView() {
   const weekNum = useMemo(() => getWeekNumber(parseDate(weekStart)), [weekStart])
 
   const handleCellClick = useCallback((memberId: string, dateStr: string) => {
-    if (paintMode && paintCategoryId) {
+    if (!canEditDuty(memberId)) return
+    if (paintMode && paintCategoryId && canUsePaintMode) {
       setDuty(memberId, dateStr, paintCategoryId)
     } else {
       setPicker({ memberId, date: dateStr })
     }
-  }, [paintMode, paintCategoryId, setDuty])
+  }, [paintMode, paintCategoryId, setDuty, canEditDuty, canUsePaintMode])
 
   return (
     <div>
@@ -105,7 +108,7 @@ export default function WeekView() {
                         className={`duty-cell ${isToday ? 'today' : ''} ${isWeekend(date) ? 'weekend' : ''}`}
                         style={{
                           borderBottom: '1px solid var(--border-light)',
-                          cursor: 'pointer',
+                          cursor: canEditDuty(member.id) ? 'pointer' : 'default',
                           padding: '8px',
                           background: firstCat ? `${firstCat.color}18` : undefined,
                           minHeight: '50px',

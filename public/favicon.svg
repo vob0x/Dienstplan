@@ -1,12 +1,20 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-  <rect width="32" height="32" rx="6" fill="#0A0B0F"/>
-  <rect x="4" y="8" width="24" height="20" rx="3" fill="none" stroke="#C9A84C" stroke-width="2"/>
-  <line x1="4" y1="14" x2="28" y2="14" stroke="#C9A84C" stroke-width="2"/>
-  <line x1="10" y1="5" x2="10" y2="11" stroke="#C9A84C" stroke-width="2" stroke-linecap="round"/>
-  <line x1="22" y1="5" x2="22" y2="11" stroke="#C9A84C" stroke-width="2" stroke-linecap="round"/>
-  <circle cx="11" cy="20" r="1.5" fill="#C9A84C"/>
-  <circle cx="16" cy="20" r="1.5" fill="#C9A84C"/>
-  <circle cx="21" cy="20" r="1.5" fill="#C9A84C"/>
-  <circle cx="11" cy="24.5" r="1.5" fill="#C9A84C" opacity="0.5"/>
-  <circle cx="16" cy="24.5" r="1.5" fill="#C9A84C" opacity="0.5"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="96" fill="#0A0B0F"/>
+  <!-- Calendar body -->
+  <rect x="96" y="140" width="320" height="260" rx="24" fill="none" stroke="#D4AF37" stroke-width="16" opacity="0.3"/>
+  <rect x="96" y="140" width="320" height="260" rx="24" fill="none" stroke="#D4AF37" stroke-width="16" stroke-dasharray="800 1200" stroke-linecap="round"/>
+  <!-- Calendar top bar -->
+  <line x1="96" y1="210" x2="416" y2="210" stroke="#D4AF37" stroke-width="8" opacity="0.4"/>
+  <!-- Calendar hooks -->
+  <line x1="190" y1="110" x2="190" y2="170" stroke="#E8E4DF" stroke-width="14" stroke-linecap="round"/>
+  <line x1="322" y1="110" x2="322" y2="170" stroke="#E8E4DF" stroke-width="14" stroke-linecap="round"/>
+  <!-- Grid dots (shift indicators) -->
+  <circle cx="176" cy="270" r="14" fill="#D4AF37" opacity="0.7"/>
+  <circle cx="256" cy="270" r="14" fill="#D4AF37"/>
+  <circle cx="336" cy="270" r="14" fill="#D4AF37" opacity="0.7"/>
+  <circle cx="176" cy="340" r="14" fill="#D4AF37" opacity="0.4"/>
+  <circle cx="256" cy="340" r="14" fill="#D4AF37" opacity="0.6"/>
+  <circle cx="336" cy="340" r="14" fill="#D4AF37" opacity="0.4"/>
+  <!-- Label -->
+  <text x="256" y="468" text-anchor="middle" font-family="sans-serif" font-weight="700" font-size="60" fill="#D4AF37">DP</text>
 </svg>
