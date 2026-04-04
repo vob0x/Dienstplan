@@ -18,7 +18,7 @@ export default function CalendarNav() {
   const { categories, canUndo, canRedo, undo, redo } = useDutyStore()
   const months = tArray('months')
 
-  const views: CalendarView[] = ['month', 'week', 'day', 'year']
+  const views: CalendarView[] = ['day', 'week', 'month', 'year']
 
   const getTitle = () => {
     switch (calendarView) {

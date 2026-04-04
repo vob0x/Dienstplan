@@ -58,7 +58,7 @@ export const de = {
   },
   swaps: {
     title: 'Schicht-Tausch', request: 'Tausch anfragen', accept: 'Annehmen', reject: 'Ablehnen',
-    approve: 'Genehmigen', cancel: 'Stornieren',
+    approve: 'Genehmigen', cancel: 'Stornieren', delete: 'Löschen',
     status: { pending: 'Ausstehend', accepted: 'Angenommen', rejected: 'Abgelehnt', approved: 'Genehmigt', completed: 'Abgeschlossen', cancelled: 'Storniert' },
     noSwaps: 'Keine offenen Tausch-Anfragen.',
     requestHint: 'Wähle einen Mitarbeiter und ein Datum zum Tauschen.',
@@ -66,6 +66,7 @@ export const de = {
     swapWith: 'Tausch mit',
     date: 'Datum',
     createError: 'Fehler beim Erstellen der Anfrage',
+    deleted: 'Eintrag gelöscht',
   },
   approvals: {
     title: 'Genehmigungen', approve: 'Genehmigen', reject: 'Ablehnen',
@@ -74,6 +75,7 @@ export const de = {
   stats: {
     title: 'Jahresstatistik', year: 'Jahr', perMember: 'Pro Mitarbeiter',
     workDays: 'Arbeitstage', totalDays: 'Gesamttage',
+    filter: 'Filter', businessDaysOnly: 'Nur Werktage gezählt (Wochenenden und Feiertage ausgeschlossen)',
   },
   import: {
     title: 'Importieren', smartImport: 'Smart Import', jsonBackup: 'JSON-Backup', excelImport: 'Excel-Import',

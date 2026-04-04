@@ -58,7 +58,7 @@ export const fr = {
   },
   swaps: {
     title: 'Échange de service', request: 'Demander un échange', accept: 'Accepter', reject: 'Refuser',
-    approve: 'Approuver', cancel: 'Annuler',
+    approve: 'Approuver', cancel: 'Annuler', delete: 'Supprimer',
     status: { pending: 'En attente', accepted: 'Accepté', rejected: 'Refusé', approved: 'Approuvé', completed: 'Terminé', cancelled: 'Annulé' },
     noSwaps: "Aucune demande d'échange ouverte.",
     requestHint: "Choisissez un collaborateur et une date pour l'échange.",
@@ -66,6 +66,7 @@ export const fr = {
     swapWith: 'Échange avec',
     date: 'Date',
     createError: "Erreur lors de la création de la demande",
+    deleted: 'Entrée supprimée',
   },
   approvals: {
     title: 'Approbations', approve: 'Approuver', reject: 'Refuser',
@@ -74,6 +75,7 @@ export const fr = {
   stats: {
     title: 'Statistiques annuelles', year: 'Année', perMember: 'Par collaborateur',
     workDays: 'Jours ouvrables', totalDays: 'Jours totaux',
+    filter: 'Filtre', businessDaysOnly: 'Seuls les jours ouvrables comptés (weekends et jours fériés exclus)',
   },
   import: {
     title: 'Importer', smartImport: 'Import intelligent', jsonBackup: 'Backup JSON', excelImport: 'Import Excel',

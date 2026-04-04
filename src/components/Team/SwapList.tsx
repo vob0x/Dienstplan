@@ -6,14 +6,14 @@ import { useAuthStore } from '@/stores/authStore'
 import { useUiStore } from '@/stores/uiStore'
 import { useI18n } from '@/i18n'
 import { parseDate } from '@/lib/utils'
-import { ArrowRightLeft, Check, X as XIcon, Ban, ChevronDown, ChevronUp, Plus } from 'lucide-react'
+import { ArrowRightLeft, Check, X as XIcon, Ban, ChevronDown, ChevronUp, Plus, Trash2 } from 'lucide-react'
 import SwapRequestModal from './SwapRequestModal'
 import StatusBadge from '@/components/UI/StatusBadge'
 
 export default function SwapList() {
   const { t, tArray } = useI18n()
-  const { swaps, respondToSwap, approveSwap, cancelSwap } = useSwapStore()
-  const { members } = useDutyStore()
+  const { swaps, respondToSwap, approveSwap, cancelSwap, deleteSwap } = useSwapStore()
+  const { members, categories, getDuties } = useDutyStore()
   const { isAdmin, isPlanner } = useTeamStore()
   const profile = useAuthStore((s) => s.profile)
   const addToast = useUiStore((s) => s.addToast)
@@ -37,6 +37,11 @@ export default function SwapList() {
   const formatDate = (dateStr: string) => {
     const d = parseDate(dateStr)
     return `${d.getDate()}. ${months[d.getMonth()]}`
+  }
+
+  const handleDeleteSwap = async (swapId: string) => {
+    await deleteSwap(swapId)
+    addToast({ type: 'info', message: t('swaps.deleted') + ' ✓' })
   }
 
 
@@ -164,16 +169,48 @@ export default function SwapList() {
               <div className="text-[10px] font-mono mt-3 mb-1" style={{ color: 'var(--text-muted)' }}>
                 ─── {t('swaps.title')} ───
               </div>
-              {recentSwaps.map((swap) => (
-                <div key={swap.id} className="flex items-center justify-between py-1.5 px-3 rounded-lg opacity-60"
-                  style={{ background: 'var(--surface-hover)' }}>
-                  <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                    {getMemberName(swap.requester_member_id)} ↔ {getMemberName(swap.target_member_id)}
-                    <span className="ml-2">{formatDate(swap.target_date)}</span>
-                  </span>
-                  <StatusBadge status={t(`swaps.status.${swap.status}`)} size="sm" />
-                </div>
-              ))}
+              {recentSwaps.map((swap) => {
+                const requesterDuties = getDuties(swap.requester_member_id, swap.target_date)
+                const targetDuties = getDuties(swap.target_member_id, swap.target_date)
+                const requesterCats = requesterDuties.map(d => categories.find(c => c.id === d.category_id)).filter(Boolean)
+                const targetCats = targetDuties.map(d => categories.find(c => c.id === d.category_id)).filter(Boolean)
+
+                return (
+                  <div key={swap.id} className="flex items-center justify-between py-2 px-3 rounded-lg opacity-60"
+                    style={{ background: 'var(--surface-hover)' }}>
+                    <div className="flex-1">
+                      <div className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                        {getMemberName(swap.requester_member_id)}
+                        {requesterCats.length > 0 && (
+                          <span className="ml-1 font-mono" style={{ color: requesterCats[0]?.color }}>
+                            ({requesterCats.map(c => c?.letter).join('+')})
+                          </span>
+                        )}
+                        {' ↔ '}
+                        {getMemberName(swap.target_member_id)}
+                        {targetCats.length > 0 && (
+                          <span className="ml-1 font-mono" style={{ color: targetCats[0]?.color }}>
+                            ({targetCats.map(c => c?.letter).join('+')})
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
+                        {formatDate(swap.target_date)}
+                        {swap.admin_note && <span className="ml-2 italic">"{swap.admin_note}"</span>}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <StatusBadge status={t(`swaps.status.${swap.status}`)} size="sm" />
+                      <button onClick={() => handleDeleteSwap(swap.id)}
+                        className="p-1 rounded-lg opacity-60 hover:opacity-100 transition-opacity"
+                        style={{ color: 'var(--danger)' }}
+                        title={t('swaps.delete')}>
+                        <Trash2 size={12} />
+                      </button>
+                    </div>
+                  </div>
+                )
+              })}
             </>
           )}
         </div>

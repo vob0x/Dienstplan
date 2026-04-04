@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { supabaseClient, isSupabaseAvailable } from '@/lib/supabase'
 import { generateId } from '@/lib/utils'
+import { useDutyStore } from '@/stores/dutyStore'
 import type { DpShiftSwap } from '@/types'
 
 // localStorage helpers
@@ -23,6 +24,7 @@ interface SwapState {
   respondToSwap: (swapId: string, accept: boolean, note?: string) => Promise<void>
   approveSwap: (swapId: string, approve: boolean, adminNote?: string) => Promise<void>
   cancelSwap: (swapId: string) => Promise<void>
+  deleteSwap: (swapId: string) => Promise<void>
 }
 
 export const useSwapStore = create<SwapState>((set, get) => ({
@@ -128,6 +130,32 @@ export const useSwapStore = create<SwapState>((set, get) => ({
           .eq('id', swapId)
       } catch (e) { console.warn('Failed to approve swap:', e) }
     }
+
+    // Auto-update calendar on approval
+    if (approve) {
+      const swap = get().swaps.find(s => s.id === swapId)
+      if (swap) {
+        const dutyStore = useDutyStore.getState()
+        const requesterDuties = dutyStore.getDuties(swap.requester_member_id, swap.target_date)
+        const targetDuties = dutyStore.getDuties(swap.target_member_id, swap.target_date)
+
+        // Remove old duties for both
+        for (const d of requesterDuties) {
+          await dutyStore.removeDuty(swap.requester_member_id, swap.target_date, d.category_id)
+        }
+        for (const d of targetDuties) {
+          await dutyStore.removeDuty(swap.target_member_id, swap.target_date, d.category_id)
+        }
+
+        // Set swapped duties
+        for (const d of requesterDuties) {
+          await dutyStore.setDuty(swap.target_member_id, swap.target_date, d.category_id, d.note || undefined)
+        }
+        for (const d of targetDuties) {
+          await dutyStore.setDuty(swap.requester_member_id, swap.target_date, d.category_id, d.note || undefined)
+        }
+      }
+    }
   },
 
   cancelSwap: async (swapId) => {
@@ -146,6 +174,18 @@ export const useSwapStore = create<SwapState>((set, get) => ({
           .update({ status: 'cancelled', updated_at: now })
           .eq('id', swapId)
       } catch (e) { console.warn('Failed to cancel swap:', e) }
+    }
+  },
+
+  deleteSwap: async (swapId) => {
+    const swap = get().swaps.find(s => s.id === swapId)
+    set((s) => ({ swaps: s.swaps.filter(sw => sw.id !== swapId) }))
+    if (swap) saveLocal(`dp_swaps_${swap.team_id}`, get().swaps)
+
+    if (isSupabaseAvailable() && supabaseClient) {
+      try {
+        await supabaseClient.from('dp_shift_swaps').delete().eq('id', swapId)
+      } catch (e) { console.warn('Failed to delete swap:', e) }
     }
   },
 }))
