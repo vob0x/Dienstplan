@@ -115,6 +115,11 @@ export const useDutyStore = create<DutyState>((set, get) => ({
     const { teamId, members } = get()
     if (!teamId) return null
 
+    // Check for duplicate name (case-insensitive)
+    if (members.some((m) => m.name.toLowerCase() === name.toLowerCase())) {
+      throw new Error('duplicate')
+    }
+
     const member: DpMember = {
       id: generateId(),
       team_id: teamId,

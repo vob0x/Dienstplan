@@ -1,88 +1,85 @@
 import { useEffect } from 'react'
 import { useUiStore } from '@/stores/uiStore'
 import { useDutyStore } from '@/stores/dutyStore'
+import { useI18n } from '@/i18n'
 
-export function useKeyboardShortcuts() {
+export interface KeyboardShortcut {
+  key: string
+  modifiers: ('ctrl' | 'alt' | 'shift' | 'meta')[]
+  description: string
+  action: () => void
+}
+
+export function useKeyboardShortcuts(enabled: boolean = true) {
+  const { setCalendarView, goToToday, togglePaintMode, setCurrentView } = useUiStore()
+  const { canUndo, canRedo, undo, redo } = useDutyStore()
+  const { t } = useI18n()
+
+  const shortcuts: KeyboardShortcut[] = [
+    // Calendar view shortcuts
+    { key: 'm', modifiers: [], description: t('help.shortcutsList.month'), action: () => setCalendarView('month') },
+    { key: 'w', modifiers: [], description: t('help.shortcutsList.week'), action: () => setCalendarView('week') },
+    { key: 'd', modifiers: [], description: t('help.shortcutsList.day'), action: () => setCalendarView('day') },
+    { key: 'y', modifiers: [], description: t('help.shortcutsList.year'), action: () => setCalendarView('year') },
+    { key: 'j', modifiers: [], description: t('help.shortcutsList.year'), action: () => setCalendarView('year') },
+    // Navigation
+    { key: 't', modifiers: [], description: t('help.shortcutsList.today'), action: () => goToToday() },
+    // Paint mode
+    { key: 'p', modifiers: [], description: t('help.shortcutsList.paint'), action: () => togglePaintMode() },
+    { key: 'Escape', modifiers: [], description: t('help.shortcutsList.escape'), action: () => useUiStore.setState({ paintMode: false }) },
+    // Undo/Redo
+    { key: 'z', modifiers: ['ctrl'], description: t('help.shortcutsList.undo'), action: () => canUndo && undo() },
+    { key: 'y', modifiers: ['ctrl'], description: t('help.shortcutsList.redo'), action: () => canRedo && redo() },
+    // Navigation views
+    { key: '1', modifiers: ['alt'], description: t('help.shortcutsList.navCalendar'), action: () => setCurrentView('calendar') },
+    { key: '2', modifiers: ['alt'], description: t('help.shortcutsList.navTeam'), action: () => setCurrentView('team') },
+    { key: '3', modifiers: ['alt'], description: t('help.shortcutsList.navManage'), action: () => setCurrentView('manage') },
+    { key: '4', modifiers: ['alt'], description: t('help.shortcutsList.navStats'), action: () => setCurrentView('stats') },
+  ]
+
   useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      // Skip if in input field
+    if (!enabled) return
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't intercept if typing in an input
       const target = e.target as HTMLElement
-      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT' || target.isContentEditable) return
-
-      const { calendarView, setCalendarView, setCurrentView, navigateMonth, navigateWeek, navigateDay, goToToday, togglePaintMode, setPaintCategoryId } = useUiStore.getState()
-      const { undo, redo, canUndo, canRedo } = useDutyStore.getState()
-
-      // Ctrl/Cmd + Z = Undo
-      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
-        e.preventDefault()
-        if (canUndo) undo()
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
         return
       }
 
-      // Ctrl/Cmd + Y or Ctrl+Shift+Z = Redo
-      if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
-        e.preventDefault()
-        if (canRedo) redo()
-        return
-      }
+      const key = e.key.toLowerCase()
+      const hasCtrl = e.ctrlKey || e.metaKey
+      const hasAlt = e.altKey
+      const hasShift = e.shiftKey
 
-      // Arrow keys: navigate
-      if (e.key === 'ArrowLeft') {
-        e.preventDefault()
-        if (calendarView === 'month') navigateMonth(-1)
-        else if (calendarView === 'week') navigateWeek(-1)
-        else if (calendarView === 'day') navigateDay(-1)
-        else if (calendarView === 'year') useUiStore.setState({ year: useUiStore.getState().year - 1 })
-        return
-      }
-      if (e.key === 'ArrowRight') {
-        e.preventDefault()
-        if (calendarView === 'month') navigateMonth(1)
-        else if (calendarView === 'week') navigateWeek(1)
-        else if (calendarView === 'day') navigateDay(1)
-        else if (calendarView === 'year') useUiStore.setState({ year: useUiStore.getState().year + 1 })
-        return
-      }
+      for (const shortcut of shortcuts) {
+        const matchKey = key === shortcut.key.toLowerCase() || e.key === shortcut.key
 
-      // View switching
-      if (e.key === 'm' || e.key === 'M') { setCalendarView('month'); return }
-      if (e.key === 'w' || e.key === 'W') { setCalendarView('week'); return }
-      if (e.key === 'd' || e.key === 'D') { setCalendarView('day'); return }
-      if (e.key === 'j' || e.key === 'J' || e.key === 'y' || e.key === 'Y') { setCalendarView('year'); return }
-
-      // T = Today
-      if (e.key === 't' || e.key === 'T') { goToToday(); return }
-
-      // P = Paint mode
-      if (e.key === 'p' || e.key === 'P') { togglePaintMode(); return }
-
-      // 1-9 = Select paint category (without Alt, to avoid conflict with Alt+1-4 view switch)
-      const num = parseInt(e.key)
-      if (!e.altKey && !e.ctrlKey && !e.metaKey && num >= 1 && num <= 9) {
-        const cats = useDutyStore.getState().categories
-        if (cats[num - 1]) {
-          setPaintCategoryId(cats[num - 1].id)
-          if (!useUiStore.getState().paintMode) togglePaintMode()
+        let modifiersMatch = true
+        if (shortcut.modifiers.length === 0) {
+          modifiersMatch = !hasCtrl && !hasAlt && !hasShift
+        } else {
+          const hasRequired = shortcut.modifiers.every((m) => {
+            if (m === 'ctrl') return hasCtrl
+            if (m === 'alt') return hasAlt
+            if (m === 'shift') return hasShift
+            if (m === 'meta') return e.metaKey
+            return false
+          })
+          modifiersMatch = hasRequired
         }
-        return
-      }
 
-      // Escape = Close paint mode
-      if (e.key === 'Escape') {
-        if (useUiStore.getState().paintMode) {
-          useUiStore.setState({ paintMode: false })
+        if (matchKey && modifiersMatch) {
+          e.preventDefault()
+          shortcut.action()
+          break
         }
-        return
       }
-
-      // Nav shortcuts: 1-4 with Alt
-      if (e.altKey && e.key === '1') { setCurrentView('calendar'); return }
-      if (e.altKey && e.key === '2') { setCurrentView('team'); return }
-      if (e.altKey && e.key === '3') { setCurrentView('manage'); return }
-      if (e.altKey && e.key === '4') { setCurrentView('stats'); return }
     }
 
-    window.addEventListener('keydown', handler)
-    return () => window.removeEventListener('keydown', handler)
-  }, [])
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [enabled, canUndo, canRedo])
+
+  return shortcuts
 }

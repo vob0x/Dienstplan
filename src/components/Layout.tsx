@@ -1,11 +1,14 @@
-import { lazy, Suspense } from 'react'
+import { lazy, Suspense, useState } from 'react'
 import { useUiStore } from '@/stores/uiStore'
 import { useAuthStore } from '@/stores/authStore'
 import { useTeamStore } from '@/stores/teamStore'
 import { useI18n } from '@/i18n'
-import { Calendar, Users, Settings, BarChart3, Sun, Moon, LogOut, Menu, X, Globe } from 'lucide-react'
+import { isSupabaseAvailable } from '@/lib/supabase'
+import { Calendar, Users, Settings, BarChart3, Sun, Moon, LogOut, Menu, X, Globe, WifiOff, HelpCircle } from 'lucide-react'
 import ToastContainer from '@/components/UI/Toast'
+import HelpPanel from '@/components/UI/HelpPanel'
 import MonthView from '@/components/Calendar/MonthView'
+import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
 import type { ViewType } from '@/types'
 
 const WeekView = lazy(() => import('@/components/Calendar/WeekView'))
@@ -34,6 +37,11 @@ export default function Layout() {
   const signOut = useAuthStore((s) => s.signOut)
   const profile = useAuthStore((s) => s.profile)
   const team = useTeamStore((s) => s.team)
+  const [helpOpen, setHelpOpen] = useState(false)
+
+  // Setup keyboard shortcuts with help key binding
+  const shortcuts = useKeyboardShortcuts(true)
+  shortcuts.find(s => s.key === '?')!.action = () => setHelpOpen(true)
 
   const navItems: Array<{ id: ViewType; icon: typeof Calendar; label: string }> = [
     { id: 'calendar', icon: Calendar, label: t('nav.calendar') },
@@ -67,9 +75,10 @@ export default function Layout() {
           </div>
 
           {/* Center: Navigation (desktop) */}
-          <nav className="hidden md:flex items-center gap-1">
-            {navItems.map((item) => {
+          <nav className="hidden md:flex items-center gap-1" role="navigation" aria-label={t('nav.main')}>
+            {navItems.map((item, idx) => {
               const active = currentView === item.id
+              const shortcutKey = (idx + 1).toString()
               return (
                 <button
                   key={item.id}
@@ -80,6 +89,8 @@ export default function Layout() {
                     color: active ? 'var(--neon-cyan)' : 'var(--text-secondary)',
                     borderBottom: active ? '2px solid var(--neon-cyan)' : '2px solid transparent',
                   }}
+                  title={`${item.label} (Alt+${shortcutKey})`}
+                  aria-current={active ? 'page' : undefined}
                 >
                   <item.icon size={18} />
                   {item.label}
@@ -90,12 +101,21 @@ export default function Layout() {
 
           {/* Right: Controls */}
           <div className="flex items-center gap-2">
+            {!isSupabaseAvailable() && (
+              <div className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs" style={{ background: 'rgba(212,112,110,0.1)', color: 'var(--danger)' }} title={t('ui.offline')}>
+                <WifiOff size={14} />
+                <span className="hidden sm:inline">{t('ui.offline')}</span>
+              </div>
+            )}
+            <button onClick={() => setHelpOpen(true)} className="p-2 rounded-xl transition-colors" style={{ color: 'var(--text-secondary)' }} title={t('help.title') + ' (?)'}>
+              <HelpCircle size={18} />
+            </button>
             <button onClick={() => setLanguage(language === 'de' ? 'fr' : 'de')} className="p-2 rounded-xl text-xs font-mono font-bold transition-colors"
               style={{ color: 'var(--text-secondary)' }}
               title={language === 'de' ? 'Français' : 'Deutsch'}>
               <Globe size={18} />
             </button>
-            <button onClick={toggleTheme} className="p-2 rounded-xl transition-colors" style={{ color: 'var(--text-secondary)' }}>
+            <button onClick={toggleTheme} className="p-2 rounded-xl transition-colors" style={{ color: 'var(--text-secondary)' }} title={theme === 'cyber' ? t('ui.theme.light') : t('ui.theme.dark')}>
               {theme === 'cyber' ? <Sun size={18} /> : <Moon size={18} />}
             </button>
             {profile && (
@@ -111,7 +131,7 @@ export default function Layout() {
 
         {/* Mobile navigation */}
         {sidebarOpen && (
-          <nav className="md:hidden flex gap-1 px-4 pb-2 animate-slide-in-down">
+          <nav className="md:hidden flex gap-1 px-4 pb-2 animate-slide-in-down" role="navigation" aria-label={t('nav.main')}>
             {navItems.map((item) => {
               const active = currentView === item.id
               return (
@@ -123,6 +143,7 @@ export default function Layout() {
                     background: active ? 'var(--surface-active)' : 'transparent',
                     color: active ? 'var(--neon-cyan)' : 'var(--text-secondary)',
                   }}
+                  aria-current={active ? 'page' : undefined}
                 >
                   <item.icon size={20} />
                   {item.label}
@@ -149,7 +170,7 @@ export default function Layout() {
         borderTop: '1px solid var(--border)',
         backdropFilter: 'blur(20px)',
         paddingBottom: 'env(safe-area-inset-bottom)',
-      }}>
+      }} role="navigation" aria-label={t('nav.mobile')}>
         <div className="flex items-center justify-around py-1">
           {navItems.map((item) => {
             const active = currentView === item.id
@@ -159,6 +180,7 @@ export default function Layout() {
                 onClick={() => setCurrentView(item.id)}
                 className="flex flex-col items-center gap-0.5 py-1 px-3 transition-all"
                 style={{ color: active ? 'var(--neon-cyan)' : 'var(--text-muted)', fontSize: '0.65rem' }}
+                aria-current={active ? 'page' : undefined}
               >
                 <item.icon size={20} strokeWidth={active ? 2.5 : 2} />
                 <span>{item.label}</span>
@@ -169,6 +191,7 @@ export default function Layout() {
       </nav>
 
       <ToastContainer />
+      <HelpPanel open={helpOpen} onClose={() => setHelpOpen(false)} />
     </div>
   )
 }

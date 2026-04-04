@@ -7,6 +7,9 @@
    Dienstplan V6
    ============================================================================ */
 
+/* Note: --neon-cyan is the primary accent color. In dark/cyber theme it's warm gold (#C9A962),
+   in light theme it's blue (#2563EB). This is intentional for theme-specific visual hierarchy. */
+
 @keyframes meshDrift {
   0%   { background-position: 0% 0%, 100% 100%, 50% 100%, 0% 0%; }
   33%  { background-position: 30% 20%, 70% 80%, 20% 60%, 0% 0%; }
@@ -233,9 +236,41 @@ body::before {
   to { opacity: 1; }
 }
 
+/* Smooth page transitions */
+.view-enter { animation: fade-in 0.2s ease-out; }
+
+/* Focus ring for accessibility */
+button:focus-visible, input:focus-visible, select:focus-visible {
+  outline: 2px solid var(--neon-cyan);
+  outline-offset: 2px;
+}
+
+/* Smooth color transitions on interactive elements */
+button, a, input, select {
+  transition: opacity 0.15s ease, transform 0.1s ease, background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+/* Button press feedback */
+button:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+/* Mobile calendar optimization */
+@media (max-width: 640px) {
+  .duty-cell {
+    height: 28px;
+    font-size: 11px;
+  }
+}
+
 /* Print styles */
 @media print {
   body::before { display: none; }
-  nav, .no-print { display: none !important; }
-  body { background: white; color: black; }
+  nav, .no-print, .toast-enter { display: none !important; }
+  body { background: white !important; color: black !important; }
+  * { color: black !important; border-color: #ddd !important; }
+  .duty-cell { border: 1px solid #ddd; }
+  @page { margin: 15mm; }
+  h2 { page-break-after: avoid; }
+  table { page-break-inside: avoid; }
 }

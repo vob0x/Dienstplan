@@ -3,6 +3,7 @@ import { useDutyStore } from '@/stores/dutyStore'
 import { useI18n } from '@/i18n'
 import { parseDate } from '@/lib/utils'
 import Modal from '@/components/UI/Modal'
+import ConfirmDialog from '@/components/UI/ConfirmDialog'
 import { Trash2 } from 'lucide-react'
 
 interface DutyPickerProps {
@@ -18,6 +19,7 @@ export default function DutyPicker({ open, onClose, memberId, memberName, date }
   const { categories, getDuty, setDuty, removeDuty } = useDutyStore()
   const existing = getDuty(memberId, date)
   const [note, setNote] = useState(existing?.note || '')
+  const [confirmRemove, setConfirmRemove] = useState(false)
 
   // Reset note when duty changes (e.g. switching between members/dates)
   useEffect(() => {
@@ -34,11 +36,12 @@ export default function DutyPicker({ open, onClose, memberId, memberName, date }
 
   const handleRemove = async () => {
     await removeDuty(memberId, date)
+    setConfirmRemove(false)
     onClose()
   }
 
   return (
-    <Modal open={open} onClose={onClose} title={`${t('duty.pick')} – ${memberName}`} maxWidth="380px">
+    <Modal open={open} onClose={onClose} title={`${t('duty.pick')} – ${memberName}`} size="sm">
       <p className="text-sm mb-4" style={{ color: 'var(--text-muted)' }}>{dateLabel}</p>
 
       <div className="grid grid-cols-2 gap-2 mb-4">
@@ -78,7 +81,7 @@ export default function DutyPicker({ open, onClose, memberId, memberName, date }
       {/* Remove button */}
       {existing && (
         <button
-          onClick={handleRemove}
+          onClick={() => setConfirmRemove(true)}
           className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-colors"
           style={{ background: 'rgba(212,112,110,0.1)', color: 'var(--danger)', border: '1px solid rgba(212,112,110,0.2)' }}
         >
@@ -86,6 +89,9 @@ export default function DutyPicker({ open, onClose, memberId, memberName, date }
           {t('duty.remove')}
         </button>
       )}
+
+      <ConfirmDialog open={confirmRemove} onClose={() => setConfirmRemove(false)}
+        onConfirm={handleRemove} title={t('duty.remove')} message={t('duty.confirmRemove')} danger />
     </Modal>
   )
 }

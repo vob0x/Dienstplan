@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useAuthStore } from '@/stores/authStore'
 import { useI18n } from '@/i18n'
+import { getErrorMessage } from '@/lib/errorMessages'
 import { Eye, EyeOff, Calendar } from 'lucide-react'
 
 export default function LoginScreen() {
@@ -141,7 +142,7 @@ export default function LoginScreen() {
           {/* Error */}
           {error && (
             <p className="text-sm px-3 py-2 rounded-lg" style={{ background: 'rgba(212,112,110,0.1)', color: 'var(--danger)' }}>
-              {error === 'CODENAME_TAKEN' ? t('auth.errors.codename_taken') : error}
+              {getErrorMessage(error, t)}
             </p>
           )}
 

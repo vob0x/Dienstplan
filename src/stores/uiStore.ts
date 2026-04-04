@@ -118,7 +118,23 @@ export const useUiStore = create<UiState>((set, get) => ({
   },
 
   setPaintMode: (on) => set({ paintMode: on }),
-  setPaintCategoryId: (id) => set({ paintCategoryId: id }),
+  setPaintCategoryId: (id) => {
+    // Verify category exists
+    if (id) {
+      const categories = useDutyStore.getState().categories
+      if (!categories.find((c) => c.id === id)) {
+        // Category was deleted, disable paint mode or auto-select first available
+        const cats = useDutyStore.getState().categories
+        if (cats.length > 0) {
+          set({ paintCategoryId: cats[0].id })
+        } else {
+          set({ paintCategoryId: null, paintMode: false })
+        }
+        return
+      }
+    }
+    set({ paintCategoryId: id })
+  },
   togglePaintMode: () => {
     const { paintMode, paintCategoryId } = get()
     if (!paintMode && !paintCategoryId) {
@@ -129,6 +145,15 @@ export const useUiStore = create<UiState>((set, get) => ({
         return
       }
     }
+    // Verify current paintCategoryId still exists before toggling
+    if (paintMode && paintCategoryId) {
+      const categories = useDutyStore.getState().categories
+      if (!categories.find((c) => c.id === paintCategoryId)) {
+        // Category was deleted, disable paint mode
+        set({ paintMode: false })
+        return
+      }
+    }
     set({ paintMode: !paintMode })
   },
 
@@ -136,7 +161,19 @@ export const useUiStore = create<UiState>((set, get) => ({
     const id = Math.random().toString(36).slice(2)
     const toast = { ...t, id }
     set((s) => ({ toasts: [...s.toasts, toast] }))
-    const duration = t.duration || 4000
+    // Determine duration based on toast type and undo action
+    let duration = t.duration
+    if (duration === undefined) {
+      if (t.undoAction) {
+        duration = 8000 // 8s for undo actions
+      } else if (t.type === 'error') {
+        duration = 6000 // 6s for errors
+      } else if (t.type === 'warning') {
+        duration = 5000 // 5s for warnings
+      } else {
+        duration = 4000 // 4s default
+      }
+    }
     setTimeout(() => get().removeToast(id), duration)
   },
   removeToast: (id) => set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) })),

@@ -8,6 +8,7 @@ import { useI18n } from '@/i18n'
 import { parseDate } from '@/lib/utils'
 import { ArrowRightLeft, Check, X as XIcon, Ban, ChevronDown, ChevronUp, Plus } from 'lucide-react'
 import SwapRequestModal from './SwapRequestModal'
+import StatusBadge from '@/components/UI/StatusBadge'
 
 export default function SwapList() {
   const { t, tArray } = useI18n()
@@ -38,17 +39,6 @@ export default function SwapList() {
     return `${d.getDate()}. ${months[d.getMonth()]}`
   }
 
-  const statusColor = (status: string) => {
-    switch (status) {
-      case 'pending': return 'var(--vacation-text)'
-      case 'accepted': return 'var(--neon-cyan)'
-      case 'approved': return '#6EC49E'
-      case 'rejected': return 'var(--danger)'
-      case 'completed': return 'var(--text-muted)'
-      case 'cancelled': return 'var(--text-muted)'
-      default: return 'var(--text-muted)'
-    }
-  }
 
   if (activeSwaps.length === 0 && recentSwaps.length === 0) {
     return (
@@ -120,10 +110,7 @@ export default function SwapList() {
                   </div>
 
                   <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-mono px-1.5 py-0.5 rounded"
-                      style={{ color: statusColor(swap.status), background: `${statusColor(swap.status)}15` }}>
-                      {t(`swaps.status.${swap.status}`)}
-                    </span>
+                    <StatusBadge status={t(`swaps.status.${swap.status}`)} size="sm" />
 
                     {/* Target member can accept/reject */}
                     {swap.status === 'pending' && profile && (
@@ -184,10 +171,7 @@ export default function SwapList() {
                     {getMemberName(swap.requester_member_id)} ↔ {getMemberName(swap.target_member_id)}
                     <span className="ml-2">{formatDate(swap.target_date)}</span>
                   </span>
-                  <span className="text-[10px] font-mono px-1.5 py-0.5 rounded"
-                    style={{ color: statusColor(swap.status), background: `${statusColor(swap.status)}15` }}>
-                    {t(`swaps.status.${swap.status}`)}
-                  </span>
+                  <StatusBadge status={t(`swaps.status.${swap.status}`)} size="sm" />
                 </div>
               ))}
             </>

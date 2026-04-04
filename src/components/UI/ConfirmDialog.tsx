@@ -14,7 +14,7 @@ export default function ConfirmDialog({ open, onClose, onConfirm, title, message
   const { t } = useI18n()
 
   return (
-    <Modal open={open} onClose={onClose} title={title} maxWidth="400px">
+    <Modal open={open} onClose={onClose} title={title} size="sm">
       <p className="mb-6" style={{ color: 'var(--text-secondary)' }}>{message}</p>
       <div className="flex gap-3 justify-end">
         <button

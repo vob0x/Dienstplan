@@ -1,4 +1,5 @@
 import { useUiStore } from '@/stores/uiStore'
+import { useI18n } from '@/i18n'
 import { X, CheckCircle, AlertCircle, Info, AlertTriangle } from 'lucide-react'
 
 const icons = {
@@ -16,6 +17,7 @@ const colors = {
 }
 
 export default function ToastContainer() {
+  const { t } = useI18n()
   const toasts = useUiStore((s) => s.toasts)
   const removeToast = useUiStore((s) => s.removeToast)
 
@@ -38,9 +40,24 @@ export default function ToastContainer() {
           >
             <Icon size={20} style={{ color: colors[toast.type], flexShrink: 0 }} />
             <span className="text-sm flex-1" style={{ color: 'var(--text)' }}>{toast.message}</span>
-            <button onClick={() => removeToast(toast.id)} style={{ color: 'var(--text-muted)' }}>
-              <X size={16} />
-            </button>
+            <div className="flex items-center gap-2">
+              {toast.undoAction && (
+                <button
+                  onClick={() => {
+                    toast.undoAction?.()
+                    removeToast(toast.id)
+                  }}
+                  className="text-xs font-semibold px-2 py-1 rounded-lg transition-all hover:opacity-80"
+                  style={{ color: '#0A0B0F', background: 'var(--neon-cyan)' }}
+                  title={t('ui.undo')}
+                >
+                  {t('ui.undo')}
+                </button>
+              )}
+              <button onClick={() => removeToast(toast.id)} style={{ color: 'var(--text-muted)' }}>
+                <X size={16} />
+              </button>
+            </div>
           </div>
         )
       })}

@@ -6,7 +6,7 @@ import { getHolidays, isHoliday, isWeekend } from '@/lib/holidays'
 import { daysInMonth, toDateStr } from '@/lib/utils'
 import CalendarNav from './CalendarNav'
 import DutyPicker from './DutyPicker'
-import { AlertTriangle } from 'lucide-react'
+import { AlertTriangle, Search, X } from 'lucide-react'
 
 export default function MonthView() {
   const { t, tArray, language } = useI18n()
@@ -14,6 +14,7 @@ export default function MonthView() {
   const { members, categories, setDuty, getDuty } = useDutyStore()
 
   const [picker, setPicker] = useState<{ memberId: string; date: string } | null>(null)
+  const [memberSearch, setMemberSearch] = useState('')
   const selectedMember = members.find((m) => m.id === picker?.memberId)
   const duties = useDutyStore((s) => s.duties)
 
@@ -101,14 +102,40 @@ export default function MonthView() {
           <p className="text-sm">{t('members.title')} → {t('members.add')}</p>
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-xl" style={{ border: '1px solid var(--border)' }}>
-          <table className="border-collapse" style={{ minWidth: '800px', width: '100%', height: 'auto' }}>
-            <thead>
-              <tr>
-                <th className="sticky left-0 z-10 px-3 py-2 text-left text-xs font-semibold"
-                  style={{ background: 'var(--surface-solid)', color: 'var(--text-secondary)', borderBottom: '1px solid var(--border)', minWidth: '120px' }}>
-                  {t('members.title')}
-                </th>
+        <div>
+          {/* Member search */}
+          <div className="mb-3 sticky top-0 z-20 flex items-center gap-2 px-3 py-2 rounded-lg" style={{ background: 'var(--surface)' }}>
+            <Search size={16} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
+            <input
+              type="text"
+              placeholder={t('calendar.searchMembers')}
+              value={memberSearch}
+              onChange={(e) => setMemberSearch(e.target.value)}
+              className="text-xs bg-transparent outline-none flex-1"
+              style={{ color: 'var(--text)', caretColor: 'var(--neon-cyan)' }}
+            />
+            {memberSearch && (
+              <button
+                onClick={() => setMemberSearch('')}
+                className="p-0.5 rounded transition-colors"
+                style={{ color: 'var(--text-muted)' }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--surface-hover)')}
+                onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+              >
+                <X size={14} />
+              </button>
+            )}
+          </div>
+
+          {/* Calendar table */}
+          <div className="overflow-x-auto rounded-xl" style={{ border: '1px solid var(--border)', WebkitOverflowScrolling: 'touch' }}>
+            <table className="border-collapse" style={{ minWidth: '800px', width: '100%', height: 'auto' }}>
+              <thead>
+                <tr>
+                  <th className="sticky left-0 z-10 px-3 py-2 text-left text-xs font-semibold"
+                    style={{ background: 'var(--surface-solid)', color: 'var(--text-secondary)', borderBottom: '1px solid var(--border)', minWidth: '120px' }}>
+                    {t('members.title')}
+                  </th>
                 {dates.map(({ date, dateStr, dayOfWeek }) => {
                   const holiday = isHoliday(dateStr, holidays)
                   const weekend = isWeekend(date)
@@ -136,7 +163,9 @@ export default function MonthView() {
               </tr>
             </thead>
             <tbody>
-              {members.filter((m) => m.is_active).map((member) => (
+              {members
+                .filter((m) => m.is_active && m.name.toLowerCase().includes(memberSearch.toLowerCase()))
+                .map((member) => (
                 <tr key={member.id} style={{ height: '36px' }}>
                   <td className="sticky left-0 z-10 px-3 text-sm font-medium truncate"
                     style={{
@@ -182,7 +211,8 @@ export default function MonthView() {
                 </tr>
               ))}
             </tbody>
-          </table>
+            </table>
+          </div>
         </div>
       )}
 

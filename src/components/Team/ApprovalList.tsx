@@ -5,6 +5,7 @@ import { useUiStore } from '@/stores/uiStore'
 import { useI18n } from '@/i18n'
 import { parseDate } from '@/lib/utils'
 import { ClipboardCheck, Check, X as XIcon } from 'lucide-react'
+import StatusBadge from '@/components/UI/StatusBadge'
 
 export default function ApprovalList() {
   const { t, tArray } = useI18n()
@@ -39,10 +40,7 @@ export default function ApprovalList() {
         <h3 className="text-sm font-bold" style={{ fontFamily: 'var(--font-display)', color: 'var(--text-secondary)' }}>
           {t('approvals.title')}
         </h3>
-        <span className="text-xs px-2 py-0.5 rounded-full font-mono"
-          style={{ background: 'var(--vacation-bg)', color: 'var(--vacation-text)' }}>
-          {pendingDuties.length}
-        </span>
+        <StatusBadge status={t('duty.approval.pending')} />
       </div>
 
       <div className="space-y-2">

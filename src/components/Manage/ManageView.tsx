@@ -25,6 +25,7 @@ export default function ManageView() {
   const [editCatLetter, setEditCatLetter] = useState('')
   const [editCatColor, setEditCatColor] = useState('')
   const [editCatApproval, setEditCatApproval] = useState(false)
+  const [deleteCat, setDeleteCat] = useState<string | null>(null)
 
   // Drag-and-drop state for member reordering
   const dragMember = useRef<string | null>(null)
@@ -61,9 +62,17 @@ export default function ManageView() {
   }
   const handleAddMember = async () => {
     if (!newMemberName.trim()) return
-    await addMember(newMemberName.trim())
-    setNewMemberName('')
-    addToast({ type: 'success', message: `${newMemberName.trim()} ${t('members.addedSuccess')}` })
+    try {
+      await addMember(newMemberName.trim())
+      setNewMemberName('')
+      addToast({ type: 'success', message: `${newMemberName.trim()} ${t('members.addedSuccess')}` })
+    } catch (error) {
+      if (error instanceof Error && error.message === 'duplicate') {
+        addToast({ type: 'warning', message: t('members.duplicate') })
+      } else {
+        addToast({ type: 'error', message: 'Error adding member' })
+      }
+    }
   }
 
   const handleSaveMember = async (id: string) => {
@@ -74,9 +83,19 @@ export default function ManageView() {
 
   const handleDeleteMember = async () => {
     if (!deleteMember) return
+    // Find the member data before deletion for undo
+    const memberToDelete = members.find((m) => m.id === deleteMember)
     await removeMember(deleteMember)
     setDeleteMember(null)
-    addToast({ type: 'info', message: t('members.removedSuccess') })
+
+    // Show toast with undo action
+    addToast({
+      type: 'info',
+      message: t('members.removedSuccess'),
+      undoAction: memberToDelete ? async () => {
+        await addMember(memberToDelete.name)
+      } : undefined,
+    })
   }
 
   const handleAddCategory = async () => {
@@ -101,8 +120,10 @@ export default function ManageView() {
     setEditingCat(null)
   }
 
-  const handleDeleteCategory = async (id: string) => {
-    removeCategory(id)
+  const handleDeleteCategory = async () => {
+    if (!deleteCat) return
+    removeCategory(deleteCat)
+    setDeleteCat(null)
   }
 
   return (
@@ -123,7 +144,8 @@ export default function ManageView() {
             onKeyDown={(e) => e.key === 'Enter' && handleAddMember()}
           />
           <button onClick={handleAddMember} className="px-4 py-2 rounded-xl font-medium text-sm"
-            style={{ background: 'var(--neon-cyan)', color: '#0A0B0F' }}>
+            style={{ background: 'var(--neon-cyan)', color: '#0A0B0F' }}
+            title={t('members.add')}>
             <Plus size={18} />
           </button>
         </div>
@@ -159,11 +181,13 @@ export default function ManageView() {
                 <>
                   <span className="flex-1 text-sm font-medium" style={{ color: 'var(--text)' }}>{member.name}</span>
                   <button onClick={() => { setEditingMember(member.id); setEditMemberName(member.name) }}
-                    className="opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: 'var(--text-muted)' }}>
+                    className="opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: 'var(--text-muted)' }}
+                    title={t('members.edit')}>
                     <Pencil size={14} />
                   </button>
                   <button onClick={() => setDeleteMember(member.id)}
-                    className="opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: 'var(--danger)' }}>
+                    className="opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: 'var(--danger)' }}
+                    title={t('members.remove')}>
                     <Trash2 size={14} />
                   </button>
                 </>
@@ -180,7 +204,8 @@ export default function ManageView() {
             {t('categories.title')}
           </h2>
           <button onClick={handleAddCategory} className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-sm font-medium"
-            style={{ background: 'var(--surface-active)', color: 'var(--neon-cyan)' }}>
+            style={{ background: 'var(--surface-active)', color: 'var(--neon-cyan)' }}
+            title={t('categories.add')}>
             <Plus size={16} /> {t('categories.add')}
           </button>
         </div>
@@ -225,10 +250,13 @@ export default function ManageView() {
                         style={{ background: c, border: editCatColor === c ? '3px solid var(--text)' : '2px solid transparent', transform: editCatColor === c ? 'scale(1.15)' : 'scale(1)' }} />
                     ))}
                   </div>
-                  <label className="flex items-center gap-2 text-xs cursor-pointer" style={{ color: 'var(--text-secondary)' }}>
-                    <input type="checkbox" checked={editCatApproval} onChange={(e) => setEditCatApproval(e.target.checked)} />
-                    {t('categories.requiresApproval')}
-                  </label>
+                  <div>
+                    <label className="flex items-center gap-2 text-xs cursor-pointer" style={{ color: 'var(--text-secondary)' }}>
+                      <input type="checkbox" checked={editCatApproval} onChange={(e) => setEditCatApproval(e.target.checked)} />
+                      {t('categories.requiresApproval')}
+                    </label>
+                    <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>{t('categories.approvalHint')}</p>
+                  </div>
                   <div className="flex gap-2">
                     <button onClick={() => handleSaveCategory(cat.id)} className="px-3 py-1.5 rounded-lg text-xs font-semibold"
                       style={{ background: 'var(--neon-cyan)', color: '#0A0B0F' }}>{t('ui.save')}</button>
@@ -247,8 +275,10 @@ export default function ManageView() {
                     </span>
                   )}
                   <button onClick={() => { setEditingCat(cat.id); setEditCatName(cat.name); setEditCatLetter(cat.letter); setEditCatColor(cat.color); setEditCatApproval(cat.requires_approval) }}
-                    style={{ color: 'var(--text-muted)' }}><Pencil size={14} /></button>
-                  <button onClick={() => handleDeleteCategory(cat.id)} style={{ color: 'var(--danger)' }}><Trash2 size={14} /></button>
+                    style={{ color: 'var(--text-muted)' }}
+                    title={t('categories.edit')}><Pencil size={14} /></button>
+                  <button onClick={() => setDeleteCat(cat.id)} style={{ color: 'var(--danger)' }}
+                    title={t('categories.remove')}><Trash2 size={14} /></button>
                 </div>
               )}
             </div>
@@ -258,6 +288,9 @@ export default function ManageView() {
 
       <ConfirmDialog open={!!deleteMember} onClose={() => setDeleteMember(null)}
         onConfirm={handleDeleteMember} title={t('members.remove')} message={t('members.confirmRemove')} danger />
+
+      <ConfirmDialog open={!!deleteCat} onClose={() => setDeleteCat(null)}
+        onConfirm={handleDeleteCategory} title={t('categories.remove')} message={t('categories.confirmRemove')} danger />
     </div>
   )
 }

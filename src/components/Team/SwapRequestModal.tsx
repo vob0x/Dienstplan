@@ -4,7 +4,7 @@ import { useDutyStore } from '@/stores/dutyStore'
 import { useTeamStore } from '@/stores/teamStore'
 import { useUiStore } from '@/stores/uiStore'
 import { useI18n } from '@/i18n'
-// utils import removed (toDateStr unused)
+import { toDateStr } from '@/lib/utils'
 import Modal from '@/components/UI/Modal'
 
 interface SwapRequestModalProps {
@@ -26,6 +26,12 @@ export default function SwapRequestModal({ open, onClose }: SwapRequestModalProp
   const [submitting, setSubmitting] = useState(false)
 
   const activeMembers = dpMembers.filter((m) => m.is_active)
+
+  // Calculate date constraints
+  const today = new Date()
+  const minDate = toDateStr(today)
+  const maxDate = new Date(today.getFullYear() + 1, today.getMonth(), today.getDate())
+  const maxDateStr = toDateStr(maxDate)
 
   // Find requester's duty on the target date
   const requesterDuty = useMemo(() => {
@@ -74,7 +80,7 @@ export default function SwapRequestModal({ open, onClose }: SwapRequestModalProp
   }
 
   return (
-    <Modal open={open} onClose={onClose} title={t('swaps.request')} maxWidth="420px">
+    <Modal open={open} onClose={onClose} title={t('swaps.request')} size="md">
       <div className="space-y-4">
         {/* Requester */}
         <div>
@@ -121,6 +127,8 @@ export default function SwapRequestModal({ open, onClose }: SwapRequestModalProp
             type="date"
             value={targetDate}
             onChange={(e) => setTargetDate(e.target.value)}
+            min={minDate}
+            max={maxDateStr}
             className="w-full px-3 py-2 rounded-xl text-sm outline-none"
             style={{ background: 'var(--surface-solid)', border: '1px solid var(--border)', color: 'var(--text)' }}
           />
