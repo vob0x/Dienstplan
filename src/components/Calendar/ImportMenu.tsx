@@ -3,7 +3,8 @@ import { useDutyStore } from '@/stores/dutyStore'
 import { useUiStore } from '@/stores/uiStore'
 import { useI18n } from '@/i18n'
 import { parseBackupJSON } from '@/lib/exportExcel'
-import { Upload, FileJson, ChevronDown } from 'lucide-react'
+import SmartImportModal from './SmartImportModal'
+import { Upload, FileJson, ChevronDown, Zap } from 'lucide-react'
 
 export default function ImportMenu() {
   const { t } = useI18n()
@@ -11,6 +12,7 @@ export default function ImportMenu() {
   const addToast = useUiStore((s) => s.addToast)
   const [open, setOpen] = useState(false)
   const [importing, setImporting] = useState(false)
+  const [smartImportOpen, setSmartImportOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   const fileRef = useRef<HTMLInputElement>(null)
 
@@ -87,13 +89,32 @@ export default function ImportMenu() {
 
       {open && (
         <div
-          className="absolute right-0 top-full mt-1 py-1 rounded-xl z-50 min-w-[200px] animate-slide-in-down"
+          className="absolute right-0 top-full mt-1 py-1 rounded-xl z-50 min-w-[220px] animate-slide-in-down"
           style={{
             background: 'var(--surface-elevated)',
             border: '1px solid var(--border-hover)',
             boxShadow: 'var(--shadow-lg)',
           }}
         >
+          <button
+            onClick={() => {
+              setSmartImportOpen(true)
+              setOpen(false)
+            }}
+            className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-left transition-colors hover:bg-[rgba(126,184,196,0.05)]"
+            style={{ color: 'var(--text)' }}
+          >
+            <Zap size={16} style={{ color: 'var(--neon-cyan)' }} />
+            <div>
+              <div className="font-medium">{t('import.smartImport')}</div>
+              <div className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
+                {t('import.smartImportDesc')}
+              </div>
+            </div>
+          </button>
+
+          <div style={{ height: '1px', background: 'var(--border)', margin: '4px 0' }} />
+
           <button onClick={handleJSONImport}
             className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-left transition-colors hover:bg-[rgba(201,169,98,0.05)]"
             style={{ color: 'var(--text)' }}>
@@ -107,6 +128,9 @@ export default function ImportMenu() {
           </button>
         </div>
       )}
+
+      {/* Smart Import Modal */}
+      <SmartImportModal open={smartImportOpen} onClose={() => setSmartImportOpen(false)} />
     </div>
   )
 }

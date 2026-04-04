@@ -22,12 +22,14 @@ export const fr = {
     remove: 'Supprimer', save: 'Enregistrer', cancel: 'Annuler',
     confirmRemove: 'Vraiment supprimer le service?',
     approval: { none: '', pending: 'En attente', approved: 'Approuvé', rejected: 'Refusé' },
+    multipleHint: 'Plusieurs services possibles', removeSpecific: 'Supprimer ce type de service',
   },
   members: {
     title: 'Collaborateurs', add: 'Ajouter', namePlaceholder: 'Entrer le nom',
     edit: 'Modifier', remove: 'Supprimer', confirmRemove: 'Supprimer le collaborateur et tous ses services?',
     addedSuccess: 'ajouté', removedSuccess: 'Collaborateur supprimé',
     duplicate: 'Nom déjà utilisé',
+    fromTeam: 'Ajouter depuis l\'équipe', teamSync: 'Membres de l\'équipe', activate: 'Activer', alreadyActive: 'Déjà actif',
   },
   categories: {
     title: 'Types de service', add: 'Ajouter', edit: 'Modifier', remove: 'Supprimer',
@@ -73,7 +75,12 @@ export const fr = {
     title: 'Statistiques annuelles', year: 'Année', perMember: 'Par collaborateur',
     workDays: 'Jours ouvrables', totalDays: 'Jours totaux',
   },
-  import: { title: 'Importer', smartImport: 'Import intelligent', jsonBackup: 'Backup JSON', excelImport: 'Import Excel' },
+  import: {
+    title: 'Importer', smartImport: 'Import intelligent', jsonBackup: 'Backup JSON', excelImport: 'Import Excel',
+    smartImportDesc: 'Saisie libre → Calendrier', parse: 'Analyser', preview: 'Aperçu', apply: 'Appliquer',
+    selectMember: 'Choisir un collaborateur', textPlaceholder: 'p.ex. Vacances 03.02.2026 - 15.03.2026, Piquet 1er avril au 18 avril',
+    noMatch: 'Aucun type de service reconnu', entriesFound: 'Entrées trouvées', conflict: 'Conflit', importSuccess: 'Entrées importées',
+  },
   export: { title: 'Exporter', excel: 'Excel', json: 'Backup JSON', print: 'Imprimer', fullYear: "Toute l'année", statistics: 'Statistiques', backupDescription: 'Sauvegarde complète' },
   ui: {
     loading: 'Chargement...', save: 'Enregistrer', cancel: 'Annuler', delete: 'Supprimer',

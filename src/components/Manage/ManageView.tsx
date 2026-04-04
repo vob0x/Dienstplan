@@ -1,9 +1,10 @@
 import { useState, useRef } from 'react'
 import { useDutyStore } from '@/stores/dutyStore'
 import { useUiStore } from '@/stores/uiStore'
+import { useTeamStore } from '@/stores/teamStore'
 import { useI18n } from '@/i18n'
 import ConfirmDialog from '@/components/UI/ConfirmDialog'
-import { Plus, Pencil, Trash2, GripVertical, Check, X as XIcon } from 'lucide-react'
+import { Plus, Pencil, Trash2, GripVertical, Check, X as XIcon, Link2 } from 'lucide-react'
 
 const COLOR_PALETTE = [
   '#7EB8C4', '#E5A84B', '#B8A8E0', '#6EC49E', '#D4706E', '#8B8578',
@@ -13,7 +14,13 @@ const COLOR_PALETTE = [
 export default function ManageView() {
   const { t } = useI18n()
   const { members, categories, addMember, updateMember, removeMember, reorderMembers, addCategory, updateCategory, removeCategory } = useDutyStore()
+  const { members: teamMembers } = useTeamStore()
   const addToast = useUiStore((s) => s.addToast)
+
+  // Get team members not yet in dp_members
+  const availableTeamMembers = teamMembers.filter(
+    (tm) => !members.some((m) => m.user_id === tm.user_id)
+  )
 
   const [newMemberName, setNewMemberName] = useState('')
   const [editingMember, setEditingMember] = useState<string | null>(null)
@@ -66,6 +73,24 @@ export default function ManageView() {
       await addMember(newMemberName.trim())
       setNewMemberName('')
       addToast({ type: 'success', message: `${newMemberName.trim()} ${t('members.addedSuccess')}` })
+    } catch (error) {
+      if (error instanceof Error && error.message === 'duplicate') {
+        addToast({ type: 'warning', message: t('members.duplicate') })
+      } else {
+        addToast({ type: 'error', message: 'Error adding member' })
+      }
+    }
+  }
+
+  const handleActivateTeamMember = async (teamMemberId: string, displayName: string) => {
+    try {
+      await addMember(displayName)
+      const newMember = members.find((m) => m.name === displayName)
+      if (newMember) {
+        // Link the dp_member to the team_member by storing the user_id
+        await updateMember(newMember.id, { user_id: teamMemberId })
+      }
+      addToast({ type: 'success', message: `${displayName} ${t('members.addedSuccess')}` })
     } catch (error) {
       if (error instanceof Error && error.message === 'duplicate') {
         addToast({ type: 'warning', message: t('members.duplicate') })
@@ -128,6 +153,35 @@ export default function ManageView() {
 
   return (
     <div className="max-w-2xl mx-auto space-y-8">
+      {/* Team Members Section */}
+      {availableTeamMembers.length > 0 && (
+        <section>
+          <h2 className="text-lg font-bold mb-4" style={{ fontFamily: 'var(--font-display)', color: 'var(--text)' }}>
+            {t('members.teamSync')}
+          </h2>
+          <p className="text-sm mb-3" style={{ color: 'var(--text-muted)' }}>
+            {t('members.fromTeam')}
+          </p>
+          <div className="space-y-2">
+            {availableTeamMembers.map((tm) => (
+              <div key={tm.id} className="flex items-center justify-between px-4 py-3 rounded-xl"
+                style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+                <div className="flex items-center gap-2 flex-1">
+                  <Link2 size={14} style={{ color: 'var(--text-muted)' }} />
+                  <span style={{ color: 'var(--text)' }}>{tm.display_name}</span>
+                </div>
+                <button
+                  onClick={() => handleActivateTeamMember(tm.user_id, tm.display_name || tm.user_id)}
+                  className="px-3 py-1.5 rounded-lg text-xs font-medium"
+                  style={{ background: 'var(--neon-cyan)', color: '#0A0B0F' }}>
+                  {t('members.activate')}
+                </button>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
       {/* Members Section */}
       <section>
         <h2 className="text-lg font-bold mb-4" style={{ fontFamily: 'var(--font-display)', color: 'var(--text)' }}>
@@ -152,48 +206,54 @@ export default function ManageView() {
 
         {/* Member list */}
         <div className="space-y-1">
-          {members.map((member) => (
-            <div key={member.id}
-              draggable={editingMember !== member.id}
-              onDragStart={() => handleDragStart(member.id)}
-              onDragOver={(e) => handleDragOver(e, member.id)}
-              onDrop={() => handleDrop(member.id)}
-              onDragEnd={handleDragEnd}
-              className="flex items-center gap-2 px-3 py-2 rounded-xl group transition-all"
-              style={{
-                background: dragOverMember === member.id ? 'var(--surface-active)' : 'var(--surface)',
-                border: dragOverMember === member.id ? '1px solid var(--neon-cyan)' : '1px solid var(--border-light)',
-                opacity: dragMember.current === member.id ? 0.5 : 1,
-              }}>
-              <GripVertical size={16} style={{ color: 'var(--text-muted)', cursor: 'grab' }} />
+          {members.map((member) => {
+            const isFromTeam = !!member.user_id
+            return (
+              <div key={member.id}
+                draggable={editingMember !== member.id}
+                onDragStart={() => handleDragStart(member.id)}
+                onDragOver={(e) => handleDragOver(e, member.id)}
+                onDrop={() => handleDrop(member.id)}
+                onDragEnd={handleDragEnd}
+                className="flex items-center gap-2 px-3 py-2 rounded-xl group transition-all"
+                style={{
+                  background: dragOverMember === member.id ? 'var(--surface-active)' : 'var(--surface)',
+                  border: dragOverMember === member.id ? '1px solid var(--neon-cyan)' : '1px solid var(--border-light)',
+                  opacity: dragMember.current === member.id ? 0.5 : 1,
+                }}>
+                <GripVertical size={16} style={{ color: 'var(--text-muted)', cursor: 'grab' }} />
 
-              {editingMember === member.id ? (
-                <>
-                  <input type="text" value={editMemberName} onChange={(e) => setEditMemberName(e.target.value)}
-                    className="flex-1 px-2 py-1 rounded-lg text-sm outline-none"
-                    style={{ background: 'var(--surface-solid)', border: '1px solid var(--border-hover)', color: 'var(--text)' }}
-                    onKeyDown={(e) => { if (e.key === 'Enter') handleSaveMember(member.id); if (e.key === 'Escape') setEditingMember(null) }}
-                    autoFocus />
-                  <button onClick={() => handleSaveMember(member.id)} style={{ color: 'var(--success)' }}><Check size={16} /></button>
-                  <button onClick={() => setEditingMember(null)} style={{ color: 'var(--text-muted)' }}><XIcon size={16} /></button>
-                </>
-              ) : (
-                <>
-                  <span className="flex-1 text-sm font-medium" style={{ color: 'var(--text)' }}>{member.name}</span>
-                  <button onClick={() => { setEditingMember(member.id); setEditMemberName(member.name) }}
-                    className="opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: 'var(--text-muted)' }}
-                    title={t('members.edit')}>
-                    <Pencil size={14} />
-                  </button>
-                  <button onClick={() => setDeleteMember(member.id)}
-                    className="opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: 'var(--danger)' }}
-                    title={t('members.remove')}>
-                    <Trash2 size={14} />
-                  </button>
-                </>
-              )}
-            </div>
-          ))}
+                {editingMember === member.id ? (
+                  <>
+                    <input type="text" value={editMemberName} onChange={(e) => setEditMemberName(e.target.value)}
+                      className="flex-1 px-2 py-1 rounded-lg text-sm outline-none"
+                      style={{ background: 'var(--surface-solid)', border: '1px solid var(--border-hover)', color: 'var(--text)' }}
+                      onKeyDown={(e) => { if (e.key === 'Enter') handleSaveMember(member.id); if (e.key === 'Escape') setEditingMember(null) }}
+                      autoFocus />
+                    <button onClick={() => handleSaveMember(member.id)} style={{ color: 'var(--success)' }}><Check size={16} /></button>
+                    <button onClick={() => setEditingMember(null)} style={{ color: 'var(--text-muted)' }}><XIcon size={16} /></button>
+                  </>
+                ) : (
+                  <>
+                    <span className="flex-1 text-sm font-medium" style={{ color: 'var(--text)' }}>{member.name}</span>
+                    {isFromTeam && (
+                      <span title={t('members.alreadyActive')}><Link2 size={14} style={{ color: 'var(--neon-cyan)', flexShrink: 0 }} /></span>
+                    )}
+                    <button onClick={() => { setEditingMember(member.id); setEditMemberName(member.name) }}
+                      className="opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: 'var(--text-muted)' }}
+                      title={t('members.edit')}>
+                      <Pencil size={14} />
+                    </button>
+                    <button onClick={() => setDeleteMember(member.id)}
+                      className="opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: 'var(--danger)' }}
+                      title={t('members.remove')}>
+                      <Trash2 size={14} />
+                    </button>
+                  </>
+                )}
+              </div>
+            )
+          })}
         </div>
       </section>
 

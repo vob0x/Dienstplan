@@ -12,7 +12,7 @@ import { AlertTriangle, Search, X } from 'lucide-react'
 export default function MonthView() {
   const { t, tArray, language } = useI18n()
   const { year, month, paintMode, paintCategoryId } = useUiStore()
-  const { members, categories, setDuty, getDuty } = useDutyStore()
+  const { members, categories, setDuty, getDuties } = useDutyStore()
 
   const [picker, setPicker] = useState<{ memberId: string; date: string } | null>(null)
   const [memberSearch, setMemberSearch] = useState('')
@@ -36,28 +36,18 @@ export default function MonthView() {
 
   const handleCellClick = useCallback((memberId: string, dateStr: string) => {
     if (paintMode && paintCategoryId) {
-      const existing = getDuty(memberId, dateStr)
-      // Toggle: if same category already exists, remove it; otherwise set it
-      if (existing?.category_id === paintCategoryId) {
-        useDutyStore.getState().removeDuty(memberId, dateStr)
+      const duties = getDuties(memberId, dateStr)
+      // Toggle: if category already exists, remove it; otherwise add it
+      const hasCategory = duties.some((d) => d.category_id === paintCategoryId)
+      if (hasCategory) {
+        useDutyStore.getState().removeDuty(memberId, dateStr, paintCategoryId)
       } else {
         setDuty(memberId, dateStr, paintCategoryId)
       }
     } else {
       setPicker({ memberId, date: dateStr })
     }
-  }, [paintMode, paintCategoryId, setDuty, getDuty])
-
-  // Get CSS color for a category
-  const getCatStyle = useCallback((categoryId: string) => {
-    const cat = categories.find((c) => c.id === categoryId)
-    if (!cat) return {}
-    return {
-      background: `${cat.color}22`,
-      color: cat.color,
-      borderLeft: `3px solid ${cat.color}`,
-    }
-  }, [categories])
+  }, [paintMode, paintCategoryId, setDuty, getDuties])
 
   // Detect vacation overlaps: dates where 2+ members have a requires_approval category (e.g. Ferien)
   const overlaps = useMemo(() => {
@@ -186,32 +176,42 @@ export default function MonthView() {
                     {member.name}
                   </td>
                   {dates.map(({ dateStr, date }) => {
-                    const duty = getDuty(member.id, dateStr)
-                    const cat = duty ? categories.find((c) => c.id === duty.category_id) : null
+                    const allDuties = getDuties(member.id, dateStr)
                     const weekend = isWeekend(date)
                     const isToday = dateStr === todayStr
+                    const hasPending = allDuties.some((d) => d.approval_status === 'pending')
+                    const hasRejected = allDuties.some((d) => d.approval_status === 'rejected')
 
                     return (
                       <td
                         key={dateStr}
                         onClick={() => handleCellClick(member.id, dateStr)}
-                        className={`duty-cell ${isToday ? 'today' : ''} ${weekend ? 'weekend' : ''} ${paintMode ? 'paint-highlight' : ''} ${duty?.approval_status === 'pending' ? 'approval-pending' : ''} ${duty?.approval_status === 'rejected' ? 'approval-rejected' : ''}`}
+                        className={`duty-cell ${isToday ? 'today' : ''} ${weekend ? 'weekend' : ''} ${paintMode ? 'paint-highlight' : ''} ${hasPending ? 'approval-pending' : ''} ${hasRejected ? 'approval-rejected' : ''}`}
                         style={{
-                          ...cat ? getCatStyle(cat.id) : {},
                           borderBottom: '1px solid var(--border-light)',
                           cursor: 'pointer',
                           padding: '2px',
                           height: '36px',
                           textAlign: 'center',
                           verticalAlign: 'middle',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          justifyContent: 'center',
+                          alignItems: 'center',
+                          gap: '1px',
+                          background: allDuties.length > 0 ? `${allDuties[0] && categories.find((c) => c.id === allDuties[0].category_id) ? categories.find((c) => c.id === allDuties[0].category_id)!.color : 'transparent'}22` : 'transparent',
+                          borderLeft: allDuties.length > 0 ? `3px solid ${allDuties[0] && categories.find((c) => c.id === allDuties[0].category_id) ? categories.find((c) => c.id === allDuties[0].category_id)!.color : 'transparent'}` : 'transparent',
                         }}
-                        title={duty?.note || cat?.name || ''}
+                        title={allDuties.map((d) => categories.find((c) => c.id === d.category_id)?.name || '').join(', ')}
                       >
-                        {cat && (
-                          <span style={{ fontSize: '0.75rem', fontWeight: 700, fontFamily: 'var(--font-mono)' }}>
-                            {cat.letter}
-                          </span>
-                        )}
+                        {allDuties.map((duty) => {
+                          const cat = categories.find((c) => c.id === duty.category_id)
+                          return cat ? (
+                            <span key={duty.id} style={{ fontSize: '0.75rem', fontWeight: 700, fontFamily: 'var(--font-mono)', color: cat.color }}>
+                              {cat.letter}
+                            </span>
+                          ) : null
+                        })}
                       </td>
                     )
                   })}

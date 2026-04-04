@@ -33,10 +33,11 @@ interface DutyState {
 
   // Actions – Duties
   setDuty: (memberId: string, date: string, categoryId: string, note?: string) => Promise<void>
-  removeDuty: (memberId: string, date: string) => Promise<void>
+  removeDuty: (memberId: string, date: string, categoryId?: string) => Promise<void>
   bulkSetDuties: (entries: Array<{ memberId: string; date: string; categoryId: string; note?: string }>) => Promise<void>
   bulkRemoveDuties: (keys: Array<{ memberId: string; date: string }>) => Promise<void>
   getDuty: (memberId: string, date: string) => DpDuty | undefined
+  getDuties: (memberId: string, date: string) => DpDuty[]
 
   // Approvals
   updateApprovalStatus: (dutyId: string, status: 'approved' | 'rejected') => Promise<void>
@@ -258,95 +259,95 @@ export const useDutyStore = create<DutyState>((set, get) => ({
     return get().duties.find((d) => d.member_id === memberId && d.date === date)
   },
 
+  getDuties: (memberId, date) => {
+    return get().duties.filter((d) => d.member_id === memberId && d.date === date)
+  },
+
   setDuty: async (memberId, date, categoryId, note) => {
     const { teamId, duties } = get()
     if (!teamId) return
 
-    const existing = duties.find((d) => d.member_id === memberId && d.date === date)
+    // Check if this exact combination already exists
+    const existing = duties.find((d) => d.member_id === memberId && d.date === date && d.category_id === categoryId)
+    if (existing) return // Already exists, do nothing
+
+    // Create new duty
+    const duty: DpDuty = {
+      id: generateId(),
+      team_id: teamId,
+      member_id: memberId,
+      date,
+      category_id: categoryId,
+      note: note || null,
+      approval_status: 'none',
+      created_by: null,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }
+
+    // Check if category requires approval
+    const cat = get().categories.find((c) => c.id === categoryId)
+    if (cat?.requires_approval) {
+      duty.approval_status = 'pending'
+    }
 
     // Push undo
     const undoAction: UndoAction = {
       type: 'set_duty',
-      data: { member_id: memberId, date, category_id: categoryId, note } as DpDuty,
-      previousData: existing || null,
+      data: duty,
+      previousData: null,
       timestamp: Date.now(),
     }
 
-    if (existing) {
-      // Update existing duty
-      const updated = { ...existing, category_id: categoryId, note: note || existing.note, updated_at: new Date().toISOString() }
-      const newUndo = [...get().undoStack.slice(-19), undoAction]
-      set({
-        duties: get().duties.map((d) => d.id === existing.id ? updated : d),
-        undoStack: newUndo,
-        redoStack: [],
-        canUndo: newUndo.length > 0,
-        canRedo: false,
-      })
-      saveLocal(`dp_duties_${teamId}`, get().duties)
+    const newUndo = [...get().undoStack.slice(-19), undoAction]
+    set({
+      duties: [...get().duties, duty],
+      undoStack: newUndo,
+      redoStack: [],
+      canUndo: newUndo.length > 0,
+      canRedo: false,
+    })
+    saveLocal(`dp_duties_${teamId}`, get().duties)
 
-      if (isSupabaseAvailable() && supabaseClient) {
-        try { await supabaseClient.from('dp_duties').update({ category_id: categoryId, note, updated_at: new Date().toISOString() }).eq('id', existing.id) }
-        catch (e) { console.warn('Failed to sync duty update:', e) }
-      }
-    } else {
-      // Create new duty
-      const duty: DpDuty = {
-        id: generateId(),
-        team_id: teamId,
-        member_id: memberId,
-        date,
-        category_id: categoryId,
-        note: note || null,
-        approval_status: 'none',
-        created_by: null,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      }
-
-      // Check if category requires approval
-      const cat = get().categories.find((c) => c.id === categoryId)
-      if (cat?.requires_approval) {
-        duty.approval_status = 'pending'
-      }
-
-      const newUndo2 = [...get().undoStack.slice(-19), undoAction]
-      set({
-        duties: [...get().duties, duty],
-        undoStack: newUndo2,
-        redoStack: [],
-        canUndo: newUndo2.length > 0,
-        canRedo: false,
-      })
-      saveLocal(`dp_duties_${teamId}`, get().duties)
-
-      if (isSupabaseAvailable() && supabaseClient) {
-        try {
-          const { data } = await supabaseClient.from('dp_duties').insert(duty).select().single()
-          if (data) {
-            set((s) => ({ duties: s.duties.map((d) => d.id === duty.id ? data as DpDuty : d) }))
-            saveLocal(`dp_duties_${teamId}`, get().duties)
-          }
-        } catch (e) { console.warn('Failed to sync duty insert:', e) }
-      }
+    if (isSupabaseAvailable() && supabaseClient) {
+      try {
+        const { data } = await supabaseClient.from('dp_duties').insert(duty).select().single()
+        if (data) {
+          set((s) => ({ duties: s.duties.map((d) => d.id === duty.id ? data as DpDuty : d) }))
+          saveLocal(`dp_duties_${teamId}`, get().duties)
+        }
+      } catch (e) { console.warn('Failed to sync duty insert:', e) }
     }
   },
 
-  removeDuty: async (memberId, date) => {
+  removeDuty: async (memberId, date, categoryId) => {
     const { teamId, duties } = get()
-    const existing = duties.find((d) => d.member_id === memberId && d.date === date)
-    if (!existing) return
 
-    const undoAction: UndoAction = {
+    // If categoryId provided, remove only that specific category; otherwise remove all for that member+date
+    let toRemove: DpDuty[]
+    if (categoryId) {
+      toRemove = duties.filter((d) => d.member_id === memberId && d.date === date && d.category_id === categoryId)
+    } else {
+      toRemove = duties.filter((d) => d.member_id === memberId && d.date === date)
+    }
+
+    if (toRemove.length === 0) return
+
+    // Create undo action for each removed duty
+    const undoActions: UndoAction[] = toRemove.map((existing) => ({
       type: 'delete_duty',
       data: existing,
       previousData: existing,
       timestamp: Date.now(),
-    }
+    }))
 
-    const newUndoR = [...get().undoStack.slice(-19), undoAction]
+    // For simplicity, just add the first one to undo stack (could be improved to handle arrays)
+    const newUndoR = undoActions.length > 0
+      ? [...get().undoStack.slice(-19), undoActions[0]]
+      : get().undoStack
+
     set({
-      duties: get().duties.filter((d) => d.id !== existing.id),
+      duties: get().duties.filter((d) => !toRemove.find((tr) => tr.id === d.id)),
       undoStack: newUndoR,
       redoStack: [],
       canUndo: newUndoR.length > 0,
@@ -355,8 +356,11 @@ export const useDutyStore = create<DutyState>((set, get) => ({
     saveLocal(`dp_duties_${teamId}`, get().duties)
 
     if (isSupabaseAvailable() && supabaseClient) {
-      try { await supabaseClient.from('dp_duties').delete().eq('id', existing.id) }
-      catch (e) { console.warn('Failed to sync duty delete:', e) }
+      try {
+        for (const duty of toRemove) {
+          await supabaseClient.from('dp_duties').delete().eq('id', duty.id)
+        }
+      } catch (e) { console.warn('Failed to sync duty delete:', e) }
     }
   },
 

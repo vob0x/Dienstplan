@@ -22,12 +22,14 @@ export const de = {
     remove: 'Entfernen', save: 'Speichern', cancel: 'Abbrechen',
     confirmRemove: 'Dienst wirklich löschen?',
     approval: { none: '', pending: 'Ausstehend', approved: 'Genehmigt', rejected: 'Abgelehnt' },
+    multipleHint: 'Mehrere Dienste möglich', removeSpecific: 'Diensttyp entfernen',
   },
   members: {
     title: 'Mitarbeiter', add: 'Hinzufügen', namePlaceholder: 'Name eingeben',
     edit: 'Bearbeiten', remove: 'Entfernen', confirmRemove: 'Mitarbeiter und alle zugehörigen Dienste löschen?',
     addedSuccess: 'hinzugefügt', removedSuccess: 'Mitarbeiter entfernt',
     duplicate: 'Name bereits vergeben',
+    fromTeam: 'Aus Team übernehmen', teamSync: 'Team-Mitglieder', activate: 'Aktivieren', alreadyActive: 'Bereits aktiv',
   },
   categories: {
     title: 'Diensttypen', add: 'Hinzufügen', edit: 'Bearbeiten', remove: 'Entfernen',
@@ -73,7 +75,12 @@ export const de = {
     title: 'Jahresstatistik', year: 'Jahr', perMember: 'Pro Mitarbeiter',
     workDays: 'Arbeitstage', totalDays: 'Gesamttage',
   },
-  import: { title: 'Importieren', smartImport: 'Smart Import', jsonBackup: 'JSON-Backup', excelImport: 'Excel-Import' },
+  import: {
+    title: 'Importieren', smartImport: 'Smart Import', jsonBackup: 'JSON-Backup', excelImport: 'Excel-Import',
+    smartImportDesc: 'Freitext-Eingabe → Kalender', parse: 'Analysieren', preview: 'Vorschau', apply: 'Übernehmen',
+    selectMember: 'Mitarbeiter wählen', textPlaceholder: 'z.B. Ferien 03.02.2026 - 15.03.2026, Pikett 1. April bis 18. April',
+    noMatch: 'Kein Diensttyp erkannt', entriesFound: 'Einträge gefunden', conflict: 'Konflikt', importSuccess: 'Einträge importiert',
+  },
   export: { title: 'Exportieren', excel: 'Excel', json: 'JSON-Backup', print: 'Drucken', fullYear: 'Ganzes Jahr', statistics: 'Statistik', backupDescription: 'Komplettes Backup' },
   ui: {
     loading: 'Laden...', save: 'Speichern', cancel: 'Abbrechen', delete: 'Löschen',
