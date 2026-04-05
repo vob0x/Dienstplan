@@ -89,6 +89,11 @@ export const de = {
   approvals: {
     title: 'Genehmigungen', approve: 'Genehmigen', reject: 'Ablehnen',
     noPending: 'Keine offenen Anträge.', pendingCount: 'offene Anträge',
+    conflict: 'Konflikt',
+    alsoBooked: 'Bereits eingetragen',
+    approveAll: 'Alle genehmigen',
+    rejectAll: 'Alle ablehnen',
+    batchHint: 'Gleicher Mitarbeiter & Kategorie',
   },
   stats: {
     title: 'Jahresstatistik', year: 'Jahr', perMember: 'Pro Mitarbeiter',

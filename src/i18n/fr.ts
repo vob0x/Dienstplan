@@ -83,6 +83,11 @@ export const fr = {
   approvals: {
     title: 'Approbations', approve: 'Approuver', reject: 'Refuser',
     noPending: 'Aucune demande ouverte.', pendingCount: 'demandes ouvertes',
+    conflict: 'Conflit',
+    alsoBooked: 'Déjà inscrit',
+    approveAll: 'Tout approuver',
+    rejectAll: 'Tout refuser',
+    batchHint: 'Même collaborateur & catégorie',
   },
   stats: {
     title: 'Statistiques annuelles', year: 'Année', perMember: 'Par collaborateur',
