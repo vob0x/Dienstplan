@@ -18,8 +18,9 @@
   <div id="root"></div>
   <script>
     // Auto-recover from stale Service Worker cache (chunk 404 errors)
-    window.addEventListener('error', function(e) {
-      if (e.message && (e.message.includes('Failed to fetch dynamically imported module') || e.message.includes('Loading chunk') || e.message.includes('net::ERR_ABORTED'))) {
+    function handleChunkError(msg) {
+      if (!msg) return;
+      if (msg.includes('Failed to fetch dynamically imported module') || msg.includes('Loading chunk') || msg.includes('ERR_ABORTED') || msg.includes('Loading CSS chunk')) {
         if (!sessionStorage.getItem('chunk_retry')) {
           sessionStorage.setItem('chunk_retry', '1');
           if ('caches' in window) caches.keys().then(function(k) { k.forEach(function(n) { caches.delete(n); }); });
@@ -27,7 +28,16 @@
           window.location.reload();
         }
       }
+    }
+    // Catch sync errors
+    window.addEventListener('error', function(e) { handleChunkError(e.message); });
+    // Catch async errors (dynamic import() failures are unhandled rejections)
+    window.addEventListener('unhandledrejection', function(e) {
+      var msg = e.reason && (e.reason.message || String(e.reason));
+      handleChunkError(msg);
     });
+    // Clear retry flag on successful load so future errors can trigger recovery again
+    window.addEventListener('load', function() { sessionStorage.removeItem('chunk_retry'); });
   </script>
   <script type="module" src="/src/main.tsx"></script>
 </body>

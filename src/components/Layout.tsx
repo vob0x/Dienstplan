@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState, useMemo } from 'react'
+import React, { lazy, Suspense, useState, useMemo } from 'react'
 import { useUiStore } from '@/stores/uiStore'
 import { useAuthStore } from '@/stores/authStore'
 import { useTeamStore } from '@/stores/teamStore'
@@ -16,12 +16,59 @@ import MonthView from '@/components/Calendar/MonthView'
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
 import type { ViewType } from '@/types'
 
-const WeekView = lazy(() => import('@/components/Calendar/WeekView'))
-const DayView = lazy(() => import('@/components/Calendar/DayView'))
-const YearView = lazy(() => import('@/components/Calendar/YearView'))
-const TeamView = lazy(() => import('@/components/Team/TeamView'))
-const ManageView = lazy(() => import('@/components/Manage/ManageView'))
-const StatsView = lazy(() => import('@/components/Stats/StatsView'))
+// Retry-wrapper for lazy imports — retries once after clearing caches
+function lazyRetry<T extends React.ComponentType<unknown>>(
+  factory: () => Promise<{ default: T }>
+) {
+  return lazy(() =>
+    factory().catch(() => {
+      // Clear caches and SW on chunk load failure, then retry once
+      if ('caches' in window) caches.keys().then((k) => k.forEach((n) => caches.delete(n)))
+      if (navigator.serviceWorker) navigator.serviceWorker.getRegistrations().then((r) => r.forEach((sw) => sw.unregister()))
+      return factory()
+    })
+  )
+}
+
+const WeekView = lazyRetry(() => import('@/components/Calendar/WeekView'))
+const DayView = lazyRetry(() => import('@/components/Calendar/DayView'))
+const YearView = lazyRetry(() => import('@/components/Calendar/YearView'))
+const TeamView = lazyRetry(() => import('@/components/Team/TeamView'))
+const ManageView = lazyRetry(() => import('@/components/Manage/ManageView'))
+const StatsView = lazyRetry(() => import('@/components/Stats/StatsView'))
+
+// Error boundary for chunk load failures
+class ChunkErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { hasError: boolean }
+> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props)
+    this.state = { hasError: false }
+  }
+  static getDerivedStateFromError() {
+    return { hasError: true }
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="flex flex-col items-center justify-center h-64 gap-4">
+          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+            Ansicht konnte nicht geladen werden.
+          </p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 rounded-xl text-sm font-medium"
+            style={{ background: 'var(--neon-cyan)', color: '#0A0B0F' }}
+          >
+            Seite neu laden
+          </button>
+        </div>
+      )
+    }
+    return this.props.children
+  }
+}
 
 function CalendarContent() {
   const calendarView = useUiStore((s) => s.calendarView)
@@ -185,6 +232,7 @@ export default function Layout() {
 
       {/* Main content */}
       <main className="flex-1 min-h-0 overflow-y-auto max-w-[1400px] mx-auto w-full px-4 py-4 pb-20 md:pb-4">
+        <ChunkErrorBoundary>
         <Suspense fallback={<div className="flex items-center justify-center h-64"><div className="w-8 h-8 border-2 rounded-full animate-spin" style={{ borderColor: 'var(--border)', borderTopColor: 'var(--neon-cyan)' }} /></div>}>
           {currentView === 'calendar' && <CalendarContent />}
           {currentView === 'team' && <TeamView />}
@@ -199,6 +247,7 @@ export default function Layout() {
             </RoleGuard>
           )}
         </Suspense>
+        </ChunkErrorBoundary>
       </main>
 
       {/* Mobile bottom nav */}
