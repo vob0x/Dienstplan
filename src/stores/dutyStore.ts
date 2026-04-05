@@ -269,11 +269,11 @@ export const useDutyStore = create<DutyState>((set, get) => ({
   // -- Duties --
 
   getDuty: (memberId, date) => {
-    return get().duties.find((d) => d.member_id === memberId && d.date === date)
+    return get().duties.find((d) => d.member_id === memberId && d.date === date && d.approval_status !== 'rejected')
   },
 
   getDuties: (memberId, date) => {
-    return get().duties.filter((d) => d.member_id === memberId && d.date === date)
+    return get().duties.filter((d) => d.member_id === memberId && d.date === date && d.approval_status !== 'rejected')
   },
 
   setDuty: async (memberId, date, categoryId, note) => {

@@ -31,7 +31,7 @@ export default function StatsView() {
 
   // Build stats per member (only count duties on business days)
   const stats = useMemo(() => {
-    const yearDuties = duties.filter((d) => d.date.startsWith(String(year)))
+    const yearDuties = duties.filter((d) => d.date.startsWith(String(year)) && d.approval_status !== 'rejected')
     const holidayDates = new Set(holidays.map((h) => h.date))
 
     return members.filter((m) => m.is_active).map((member) => {

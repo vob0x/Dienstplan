@@ -81,7 +81,7 @@ function buildStatsRows(
   members: DpMember[], categories: DpCategory[], duties: DpDuty[],
   language: string
 ): (string | number)[][] {
-  const yearDuties = duties.filter((d) => d.date.startsWith(String(year)))
+  const yearDuties = duties.filter((d) => d.date.startsWith(String(year)) && d.approval_status !== 'rejected')
   const holidays = getHolidays(year)
   const holidayDates = new Set(holidays.map((h) => h.date))
 

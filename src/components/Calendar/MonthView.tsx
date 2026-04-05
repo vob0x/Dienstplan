@@ -66,6 +66,7 @@ export default function MonthView() {
     const dateCatMembers: Record<string, string[]> = {}
     for (const duty of duties) {
       if (!duty.date.startsWith(monthPrefix)) continue
+      if (duty.approval_status === 'rejected') continue
       const member = members.find((m) => m.id === duty.member_id)
       if (!member || !member.is_active) continue
       const key = `${duty.date}::${duty.category_id}`
@@ -198,14 +199,13 @@ export default function MonthView() {
                     const weekend = isWeekend(date)
                     const isToday = dateStr === todayStr
                     const hasPending = allDuties.some((d) => d.approval_status === 'pending')
-                    const hasRejected = allDuties.some((d) => d.approval_status === 'rejected')
                     const editable = canEditDuty(member.id)
 
                     return (
                       <td
                         key={dateStr}
                         onClick={() => handleCellClick(member.id, dateStr)}
-                        className={`duty-cell ${isToday ? 'today' : ''} ${weekend ? 'weekend' : ''} ${paintMode && canUsePaintMode ? 'paint-highlight' : ''} ${hasPending ? 'approval-pending' : ''} ${hasRejected ? 'approval-rejected' : ''}`}
+                        className={`duty-cell ${isToday ? 'today' : ''} ${weekend ? 'weekend' : ''} ${paintMode && canUsePaintMode ? 'paint-highlight' : ''} ${hasPending ? 'approval-pending' : ''}`}
                         style={{
                           borderBottom: '1px solid var(--border-light)',
                           cursor: editable ? 'pointer' : 'default',

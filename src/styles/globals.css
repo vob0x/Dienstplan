@@ -222,11 +222,6 @@ body::before {
   );
 }
 
-.duty-cell.approval-rejected {
-  opacity: 0.5;
-  text-decoration: line-through;
-}
-
 /* Toast animation */
 .toast-enter { animation: slide-in-up 0.3s ease-out; }
 .toast-exit { animation: fade-in 0.2s ease-in reverse; }
