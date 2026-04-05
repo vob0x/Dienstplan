@@ -540,6 +540,9 @@ export const useDutyStore = create<DutyState>((set, get) => ({
 let dutiesChannel: any = null
 let visibilityHandler: (() => void) | null = null
 let pollingInterval: ReturnType<typeof setInterval> | null = null
+let isUnsubscribing = false          // Guard: true while we intentionally remove channel
+let reconnectTimer: ReturnType<typeof setTimeout> | null = null
+let reconnectAttempts = 0            // For exponential backoff
 
 function syncLocalStorage() {
   const { teamId, members, categories, duties } = useDutyStore.getState()
@@ -553,7 +556,14 @@ export function subscribeToDutySync() {
   const teamId = useDutyStore.getState().teamId
   if (!teamId || !isSupabaseAvailable() || !supabaseClient) return
 
+  // Clear any pending reconnect timer
+  if (reconnectTimer) {
+    clearTimeout(reconnectTimer)
+    reconnectTimer = null
+  }
+
   // Unsubscribe existing channel first to avoid duplicates
+  // The isUnsubscribing flag prevents the CLOSED event from triggering a reconnect
   unsubscribeFromDutySync()
 
   dutiesChannel = supabaseClient
@@ -633,28 +643,47 @@ export function subscribeToDutySync() {
       console.log('[Realtime]', status)
       if (status === 'SUBSCRIBED') {
         console.log('[Realtime] Connected — fetching latest data')
+        reconnectAttempts = 0  // Reset backoff on successful connection
         useDutyStore.getState().fetchAll(teamId)
       }
       if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
-        console.warn('[Realtime] Connection lost (' + status + ') — polling fallback + reconnect in 5s')
+        // CRITICAL: Ignore CLOSED events triggered by our own unsubscribe
+        if (isUnsubscribing) {
+          console.log('[Realtime] Ignoring', status, '— intentional unsubscribe')
+          return
+        }
+
+        // Prevent duplicate reconnect timers
+        if (reconnectTimer) {
+          console.log('[Realtime] Reconnect already scheduled — skipping')
+          return
+        }
+
+        // Exponential backoff: 5s, 10s, 20s, 40s, max 60s
+        const delay = Math.min(5000 * Math.pow(2, reconnectAttempts), 60000)
+        reconnectAttempts++
+        console.warn(`[Realtime] Connection lost (${status}) — polling fallback + reconnect in ${delay / 1000}s (attempt ${reconnectAttempts})`)
+
         startPolling(teamId)
-        // Auto-reconnect after 5 seconds
-        setTimeout(() => {
+
+        reconnectTimer = setTimeout(() => {
+          reconnectTimer = null
           console.log('[Realtime] Attempting reconnect…')
           subscribeToDutySync()
-        }, 5000)
+        }, delay)
       }
     })
 
-  // Visibility change handler: re-fetch when tab becomes visible (incl. team sync)
+  // Visibility change handler: re-fetch data when tab becomes visible
+  // NOTE: We do NOT call subscribeToDutySync() here — the 30s polling + existing
+  // channel reconnect handle connectivity. Re-subscribing on visibility caused
+  // infinite CLOSED→reconnect loops.
   if (!visibilityHandler) {
     visibilityHandler = async () => {
       if (document.visibilityState === 'visible') {
         const currentTeamId = useDutyStore.getState().teamId
         if (currentTeamId) {
-          console.log('[Visibility] Tab active — re-fetching data + team sync + reconnect')
-          // Re-establish Realtime if it dropped while tab was hidden
-          subscribeToDutySync()
+          console.log('[Visibility] Tab active — re-fetching data + team sync')
           const { useTeamStore } = await import('@/stores/teamStore')
           await useTeamStore.getState().fetchTeamData()
           await useDutyStore.getState().fetchAll(currentTeamId)
@@ -688,10 +717,22 @@ function startPolling(teamId: string) {
 }
 
 export function unsubscribeFromDutySync() {
+  // Cancel any pending reconnect
+  if (reconnectTimer) {
+    clearTimeout(reconnectTimer)
+    reconnectTimer = null
+  }
+
   if (dutiesChannel) {
+    // Set guard BEFORE removing channel — this prevents the CLOSED event
+    // from triggering a reconnect cascade
+    isUnsubscribing = true
     supabaseClient?.removeChannel(dutiesChannel)
     dutiesChannel = null
+    // Reset guard after a tick (the CLOSED event fires synchronously or in microtask)
+    setTimeout(() => { isUnsubscribing = false }, 100)
   }
+
   if (visibilityHandler) {
     document.removeEventListener('visibilitychange', visibilityHandler)
     visibilityHandler = null
@@ -700,4 +741,6 @@ export function unsubscribeFromDutySync() {
     clearInterval(pollingInterval)
     pollingInterval = null
   }
+
+  reconnectAttempts = 0
 }
