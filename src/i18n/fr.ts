@@ -61,7 +61,7 @@ export const fr = {
     accept: 'Accepter', reject: 'Refuser', approve: 'Approuver',
     cancel: 'Annuler', delete: 'Supprimer', confirm: 'Envoyer',
     incoming: 'Demandes entrantes', outgoing: 'Mes demandes',
-    approvalQueue: 'Approbations', history: 'Historique',
+    approvalQueue: 'Approbations', overview: 'Demandes ouvertes dans l\'équipe', history: 'Historique',
     status: {
       pendingResponder: 'En attente de réponse', accepted: 'Accepté',
       pendingApproval: 'En attente d\'approbation', approved: 'Approuvé',

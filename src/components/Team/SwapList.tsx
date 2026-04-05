@@ -8,7 +8,7 @@ import { usePermissions } from '@/lib/permissions'
 import { parseDate } from '@/lib/utils'
 import {
   ArrowRightLeft, Check, X as XIcon, Ban, Plus, Trash2,
-  Inbox, Send, ShieldCheck, ArrowDownRight,
+  Inbox, Send, ShieldCheck, ArrowDownRight, Eye,
 } from 'lucide-react'
 import SwapRequestModal from './SwapRequestModal'
 import type { DpShiftSwap, SwapStatus } from '@/types'
@@ -30,10 +30,11 @@ export default function SwapList() {
   }, [members, profile])
 
   // Categorize swaps
-  const { incoming, outgoing, pendingApproval, history } = useMemo(() => {
+  const { incoming, outgoing, pendingApproval, allOpen, history } = useMemo(() => {
     const incoming: DpShiftSwap[] = []
     const outgoing: DpShiftSwap[] = []
     const pendingApproval: DpShiftSwap[] = []
+    const allOpen: DpShiftSwap[] = []  // All non-terminal swaps (for planner+ overview)
     const history: DpShiftSwap[] = []
 
     for (const s of swaps) {
@@ -58,13 +59,27 @@ export default function SwapList() {
       if ((s.status === 'accepted' || s.status === 'pending_approval') && isPlanner) {
         pendingApproval.push(s)
       }
+
       // Also show in outgoing if requester and still not approved
       if ((s.status === 'accepted' || s.status === 'pending_approval') && s.requester_member_id === myMemberId && !isPlanner) {
         outgoing.push(s)
       }
+
+      // Planner+ overview: ALL non-terminal swaps (including pending_responder from others)
+      if (isPlanner) {
+        allOpen.push(s)
+      }
     }
 
-    return { incoming, outgoing, pendingApproval, history: history.slice(0, 10) }
+    // Remove duplicates from allOpen that are already in incoming/pendingApproval
+    const shownIds = new Set([
+      ...incoming.map((s) => s.id),
+      ...outgoing.map((s) => s.id),
+      ...pendingApproval.map((s) => s.id),
+    ])
+    const overview = allOpen.filter((s) => !shownIds.has(s.id))
+
+    return { incoming, outgoing, pendingApproval, allOpen: overview, history: history.slice(0, 10) }
   }, [swaps, myMemberId, isPlanner])
 
   const getMemberName = (id: string) => members.find((m) => m.id === id)?.name || '?'
@@ -151,7 +166,7 @@ export default function SwapList() {
     )
   }
 
-  const totalActive = incoming.length + outgoing.length + pendingApproval.length
+  const totalActive = incoming.length + outgoing.length + pendingApproval.length + allOpen.length
 
   return (
     <div className="p-4 rounded-xl" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
@@ -271,6 +286,23 @@ export default function SwapList() {
                     </button>
                   </>
                 } />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ALL OPEN: Planner+ overview of swaps still waiting for responder */}
+        {allOpen.length > 0 && (
+          <div>
+            <div className="flex items-center gap-1.5 mb-2">
+              <Eye size={14} style={{ color: 'var(--text-muted)' }} />
+              <span className="text-xs font-semibold" style={{ color: 'var(--text-secondary)' }}>
+                {t('swaps.overview')} ({allOpen.length})
+              </span>
+            </div>
+            <div className="space-y-1.5">
+              {allOpen.map((swap) => (
+                <SwapCard key={swap.id} swap={swap} />
               ))}
             </div>
           </div>

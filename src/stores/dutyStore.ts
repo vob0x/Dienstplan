@@ -635,9 +635,14 @@ export function subscribeToDutySync() {
         console.log('[Realtime] Connected — fetching latest data')
         useDutyStore.getState().fetchAll(teamId)
       }
-      if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-        console.warn('[Realtime] Connection issue — starting polling fallback')
+      if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+        console.warn('[Realtime] Connection lost (' + status + ') — polling fallback + reconnect in 5s')
         startPolling(teamId)
+        // Auto-reconnect after 5 seconds
+        setTimeout(() => {
+          console.log('[Realtime] Attempting reconnect…')
+          subscribeToDutySync()
+        }, 5000)
       }
     })
 
@@ -647,7 +652,9 @@ export function subscribeToDutySync() {
       if (document.visibilityState === 'visible') {
         const currentTeamId = useDutyStore.getState().teamId
         if (currentTeamId) {
-          console.log('[Visibility] Tab active — re-fetching data + team sync')
+          console.log('[Visibility] Tab active — re-fetching data + team sync + reconnect')
+          // Re-establish Realtime if it dropped while tab was hidden
+          subscribeToDutySync()
           const { useTeamStore } = await import('@/stores/teamStore')
           await useTeamStore.getState().fetchTeamData()
           await useDutyStore.getState().fetchAll(currentTeamId)

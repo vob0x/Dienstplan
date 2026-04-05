@@ -62,7 +62,7 @@ export const de = {
     cancel: 'Stornieren', delete: 'Löschen', confirm: 'Absenden',
     // Sections
     incoming: 'Eingehende Anfragen', outgoing: 'Meine Anfragen',
-    approvalQueue: 'Genehmigungen', history: 'Verlauf',
+    approvalQueue: 'Genehmigungen', overview: 'Offene Anfragen im Team', history: 'Verlauf',
     // Status labels
     status: {
       pendingResponder: 'Wartet auf Antwort', accepted: 'Angenommen',
