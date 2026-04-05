@@ -2,8 +2,12 @@ import { useState, useRef } from 'react'
 import { useDutyStore } from '@/stores/dutyStore'
 import { useUiStore } from '@/stores/uiStore'
 import { useI18n } from '@/i18n'
+import { usePermissions } from '@/lib/permissions'
+import { verifyPassword } from '@/stores/authStore'
+import { supabaseClient, isSupabaseAvailable } from '@/lib/supabase'
 import ConfirmDialog from '@/components/UI/ConfirmDialog'
-import { Plus, Pencil, Trash2, GripVertical, Check, X as XIcon, Link2 } from 'lucide-react'
+import Modal from '@/components/UI/Modal'
+import { Plus, Pencil, Trash2, GripVertical, Check, X as XIcon, Link2, AlertTriangle, Loader2 } from 'lucide-react'
 
 const COLOR_PALETTE = [
   '#7EB8C4', '#E5A84B', '#B8A8E0', '#6EC49E', '#D4706E', '#8B8578',
@@ -26,6 +30,14 @@ export default function ManageView() {
   const [editCatColor, setEditCatColor] = useState('')
   const [editCatApproval, setEditCatApproval] = useState(false)
   const [deleteCat, setDeleteCat] = useState<string | null>(null)
+
+  // Danger zone: reset all data
+  const { isAdmin } = usePermissions()
+  const [showResetConfirm, setShowResetConfirm] = useState(false)
+  const [showPasswordPrompt, setShowPasswordPrompt] = useState(false)
+  const [resetPassword, setResetPassword] = useState('')
+  const [resetError, setResetError] = useState('')
+  const [resetting, setResetting] = useState(false)
 
   // Drag-and-drop state for member reordering
   const dragMember = useRef<string | null>(null)
@@ -130,6 +142,69 @@ export default function ManageView() {
     if (!deleteCat) return
     removeCategory(deleteCat)
     setDeleteCat(null)
+  }
+
+  const handleResetConfirmed = () => {
+    setShowResetConfirm(false)
+    setResetPassword('')
+    setResetError('')
+    setShowPasswordPrompt(true)
+  }
+
+  const handleResetWithPassword = async () => {
+    if (!resetPassword) return
+    setResetting(true)
+    setResetError('')
+
+    try {
+      // Step 1: Verify password
+      const valid = await verifyPassword(resetPassword)
+      if (!valid) {
+        setResetError(t('dangerZone.wrongPassword'))
+        setResetting(false)
+        return
+      }
+
+      // Step 2: Delete all data for this team from Supabase
+      const teamId = useDutyStore.getState().teamId
+      if (!teamId || !isSupabaseAvailable() || !supabaseClient) {
+        setResetError(t('dangerZone.resetError'))
+        setResetting(false)
+        return
+      }
+
+      // Delete in correct order: swaps → duties → members → categories
+      const { error: swapErr } = await supabaseClient.from('dp_shift_swaps').delete().eq('team_id', teamId)
+      if (swapErr) console.warn('Swap delete error:', swapErr)
+
+      const { error: dutyErr } = await supabaseClient.from('dp_duties').delete().eq('team_id', teamId)
+      if (dutyErr) console.warn('Duty delete error:', dutyErr)
+
+      const { error: memberErr } = await supabaseClient.from('dp_members').delete().eq('team_id', teamId)
+      if (memberErr) console.warn('Member delete error:', memberErr)
+
+      const { error: catErr } = await supabaseClient.from('dp_categories').delete().eq('team_id', teamId)
+      if (catErr) console.warn('Category delete error:', catErr)
+
+      // Step 3: Clear local state + localStorage
+      useDutyStore.setState({ members: [], categories: [], duties: [], undoStack: [], redoStack: [], canUndo: false, canRedo: false })
+      localStorage.removeItem(`dp_members_${teamId}`)
+      localStorage.removeItem(`dp_categories_${teamId}`)
+      localStorage.removeItem(`dp_duties_${teamId}`)
+
+      // Also clear swap store
+      const { useSwapStore } = await import('@/stores/swapStore')
+      useSwapStore.setState({ swaps: [] })
+
+      setShowPasswordPrompt(false)
+      setResetPassword('')
+      addToast({ type: 'success', message: t('dangerZone.resetSuccess') })
+    } catch (e) {
+      console.error('Reset failed:', e)
+      setResetError(t('dangerZone.resetError'))
+    } finally {
+      setResetting(false)
+    }
   }
 
   return (
@@ -298,11 +373,78 @@ export default function ManageView() {
         </div>
       </section>
 
+      {/* Danger Zone – Admin only */}
+      {isAdmin && (
+        <section className="mt-12 pt-8" style={{ borderTop: '1px solid var(--danger)' }}>
+          <h2 className="text-lg font-bold mb-2 flex items-center gap-2" style={{ fontFamily: 'var(--font-display)', color: 'var(--danger)' }}>
+            <AlertTriangle size={20} /> {t('dangerZone.title')}
+          </h2>
+          <p className="text-sm mb-4" style={{ color: 'var(--text-muted)' }}>{t('dangerZone.resetDesc')}</p>
+          <button
+            onClick={() => setShowResetConfirm(true)}
+            className="px-4 py-2 rounded-xl text-sm font-semibold flex items-center gap-2 transition-colors"
+            style={{ background: 'transparent', border: '1px solid var(--danger)', color: 'var(--danger)' }}
+          >
+            <Trash2 size={16} /> {t('dangerZone.resetAll')}
+          </button>
+        </section>
+      )}
+
       <ConfirmDialog open={!!deleteMember} onClose={() => setDeleteMember(null)}
         onConfirm={handleDeleteMember} title={t('members.remove')} message={t('members.confirmRemove')} danger />
 
       <ConfirmDialog open={!!deleteCat} onClose={() => setDeleteCat(null)}
         onConfirm={handleDeleteCategory} title={t('categories.remove')} message={t('categories.confirmRemove')} danger />
+
+      {/* Step 1: "Are you sure?" confirmation */}
+      <ConfirmDialog open={showResetConfirm} onClose={() => setShowResetConfirm(false)}
+        onConfirm={handleResetConfirmed} title={t('dangerZone.resetAll')} message={t('dangerZone.resetConfirm')} danger />
+
+      {/* Step 2: Password prompt */}
+      <Modal open={showPasswordPrompt} onClose={() => { setShowPasswordPrompt(false); setResetPassword(''); setResetError('') }} title={t('dangerZone.resetAll')} size="sm">
+        <div className="space-y-4">
+          <div className="flex items-start gap-3 p-3 rounded-xl" style={{ background: 'rgba(var(--danger-rgb, 220,38,38), 0.1)', border: '1px solid var(--danger)' }}>
+            <AlertTriangle size={20} style={{ color: 'var(--danger)', flexShrink: 0, marginTop: 2 }} />
+            <p className="text-sm" style={{ color: 'var(--danger)' }}>{t('dangerZone.resetConfirm')}</p>
+          </div>
+
+          <div>
+            <label className="block text-sm mb-1.5" style={{ color: 'var(--text-secondary)' }}>{t('dangerZone.resetPasswordPrompt')}</label>
+            <input
+              type="password"
+              value={resetPassword}
+              onChange={(e) => { setResetPassword(e.target.value); setResetError('') }}
+              onKeyDown={(e) => e.key === 'Enter' && !resetting && handleResetWithPassword()}
+              className="w-full px-4 py-2 rounded-xl outline-none text-sm"
+              style={{ background: 'var(--surface-solid)', border: `1px solid ${resetError ? 'var(--danger)' : 'var(--border)'}`, color: 'var(--text)' }}
+              placeholder={t('auth.passwordPlaceholder')}
+              autoFocus
+              disabled={resetting}
+            />
+            {resetError && <p className="text-xs mt-1.5" style={{ color: 'var(--danger)' }}>{resetError}</p>}
+          </div>
+
+          <div className="flex gap-3 justify-end">
+            <button
+              onClick={() => { setShowPasswordPrompt(false); setResetPassword(''); setResetError('') }}
+              className="px-4 py-2 rounded-xl text-sm font-medium"
+              style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text-secondary)' }}
+              disabled={resetting}
+            >
+              {t('ui.cancel')}
+            </button>
+            <button
+              onClick={handleResetWithPassword}
+              disabled={!resetPassword || resetting}
+              className="px-4 py-2 rounded-xl text-sm font-semibold flex items-center gap-2 transition-opacity"
+              style={{ background: 'var(--danger)', color: '#fff', opacity: !resetPassword || resetting ? 0.5 : 1 }}
+            >
+              {resetting && <Loader2 size={16} className="animate-spin" />}
+              {t('dangerZone.resetAll')}
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   )
 }

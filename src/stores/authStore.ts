@@ -253,3 +253,20 @@ export const useAuthStore = create<AuthState>((set) => ({
   setError: (error) => set({ error }),
   clearError: () => set({ error: null }),
 }))
+
+/**
+ * Verify the current user's password by re-authenticating with Supabase.
+ * Returns true if the password is correct, false otherwise.
+ */
+export async function verifyPassword(password: string): Promise<boolean> {
+  const profile = useAuthStore.getState().profile
+  if (!profile || !isSupabaseAvailable() || !supabaseClient) return false
+
+  try {
+    const email = codeToEmail(profile.codename)
+    const { error } = await supabaseClient.auth.signInWithPassword({ email, password })
+    return !error
+  } catch {
+    return false
+  }
+}

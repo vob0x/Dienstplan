@@ -118,6 +118,16 @@ export const fr = {
     enable: 'Activer',
     enableHint: 'Activez les notifications pour être informé des demandes d\'échange.',
   },
+  dangerZone: {
+    title: 'Zone dangereuse',
+    resetAll: 'Supprimer toutes les données',
+    resetDesc: 'Supprime tous les collaborateurs, types de service, services et demandes d\'échange de manière irréversible.',
+    resetConfirm: 'Êtes-vous sûr? Toutes les données du planning de cette équipe seront supprimées de manière irréversible. Cette action est irréversible.',
+    resetPasswordPrompt: 'Entrez votre mot de passe pour confirmer la suppression.',
+    resetSuccess: 'Toutes les données ont été supprimées.',
+    resetError: 'Erreur lors de la suppression des données.',
+    wrongPassword: 'Mot de passe incorrect.',
+  },
   errors: {
     network: 'Erreur réseau. Veuillez réessayer plus tard.',
     unknown: 'Une erreur est survenue.',

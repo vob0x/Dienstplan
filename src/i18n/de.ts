@@ -125,6 +125,16 @@ export const de = {
     enable: 'Aktivieren',
     enableHint: 'Benachrichtigungen aktivieren, um über Tausch-Anfragen informiert zu werden.',
   },
+  dangerZone: {
+    title: 'Gefahrenbereich',
+    resetAll: 'Alle Daten löschen',
+    resetDesc: 'Löscht alle Mitarbeiter, Diensttypen, Dienste und Tauschanfragen unwiderruflich.',
+    resetConfirm: 'Bist du sicher? Alle Dienstplan-Daten dieses Teams werden unwiderruflich gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.',
+    resetPasswordPrompt: 'Gib dein Passwort ein, um die Löschung zu bestätigen.',
+    resetSuccess: 'Alle Daten wurden gelöscht.',
+    resetError: 'Fehler beim Löschen der Daten.',
+    wrongPassword: 'Falsches Passwort.',
+  },
   errors: {
     network: 'Netzwerkfehler. Bitte versuche es später.',
     unknown: 'Ein Fehler ist aufgetreten.',
