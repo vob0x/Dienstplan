@@ -109,6 +109,10 @@ export const fr = {
     online: 'Connecté',
     refresh: 'Actualiser les données',
   },
+  notifications: {
+    enable: 'Activer',
+    enableHint: 'Activez les notifications pour être informé des demandes d\'échange.',
+  },
   errors: {
     network: 'Erreur réseau. Veuillez réessayer plus tard.',
     unknown: 'Une erreur est survenue.',

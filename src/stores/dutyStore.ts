@@ -623,9 +623,11 @@ export function subscribeToDutySync() {
       }
     })
     .on('postgres_changes', { event: '*', schema: 'public', table: 'dp_shift_swaps', filter: `team_id=eq.${teamId}` }, async () => {
-      // On any swap change, re-fetch all swaps for simplicity
+      // On any swap change, re-fetch all swaps then process notifications
       const { useSwapStore } = await import('@/stores/swapStore')
       await useSwapStore.getState().fetchSwaps(teamId)
+      const { processSwapChanges } = await import('@/lib/notifications')
+      processSwapChanges()
     })
     .subscribe((status: string) => {
       console.log('[Realtime]', status)

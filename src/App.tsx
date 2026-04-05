@@ -5,6 +5,7 @@ import { useDutyStore, subscribeToDutySync, unsubscribeFromDutySync } from '@/st
 import { useTeamStore } from '@/stores/teamStore'
 import { useSwapStore } from '@/stores/swapStore'
 import { syncTeamMembersToDpMembers } from '@/lib/syncTeamMembers'
+import { initSwapNotifications } from '@/lib/notifications'
 import { I18nProvider, useI18n } from '@/i18n'
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
 import Layout from '@/components/Layout'
@@ -33,7 +34,8 @@ function AppContent() {
           await fetchAll(currentTeam.id)
           await syncTeamMembersToDpMembers()
           subscribeToDutySync()
-          fetchSwaps(currentTeam.id)
+          await fetchSwaps(currentTeam.id)
+          initSwapNotifications() // Snapshot current swaps as baseline
         }
       })
     }

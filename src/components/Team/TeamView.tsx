@@ -3,9 +3,10 @@ import { useTeamStore } from '@/stores/teamStore'
 import { useAuthStore } from '@/stores/authStore'
 import { useUiStore } from '@/stores/uiStore'
 import { useI18n } from '@/i18n'
+import { getNotificationPermission, requestNotificationPermission } from '@/lib/notifications'
 import Modal from '@/components/UI/Modal'
 import ConfirmDialog from '@/components/UI/ConfirmDialog'
-import { Users, Plus, LogIn, Copy, Shield, Crown, UserCog } from 'lucide-react'
+import { Users, Plus, LogIn, Copy, Shield, Crown, UserCog, Bell } from 'lucide-react'
 import ApprovalList from './ApprovalList'
 import SwapList from './SwapList'
 
@@ -22,6 +23,17 @@ export default function TeamView() {
   const [submitting, setSubmitting] = useState(false)
 
   const currentUserIsAdmin = profile ? isAdmin(profile.id) : false
+  const [notifPerm, setNotifPerm] = useState<string>(() => getNotificationPermission())
+  const [notifDismissed, setNotifDismissed] = useState(() => !!localStorage.getItem('dp_notif_dismissed'))
+
+  const handleEnableNotifs = async () => {
+    const granted = await requestNotificationPermission()
+    setNotifPerm(granted ? 'granted' : 'denied')
+  }
+  const dismissNotifBanner = () => {
+    setNotifDismissed(true)
+    localStorage.setItem('dp_notif_dismissed', '1')
+  }
 
   const handleCreate = async () => {
     if (!teamName.trim()) return
@@ -130,6 +142,27 @@ export default function TeamView() {
           {t('team.leave')}
         </button>
       </div>
+
+      {/* Notification prompt — show once if not yet granted/dismissed */}
+      {notifPerm === 'default' && !notifDismissed && (
+        <div className="flex items-center gap-3 p-3 rounded-xl animate-slide-in-down"
+          style={{ background: 'rgba(184,168,224,0.08)', border: '1px solid rgba(184,168,224,0.2)' }}>
+          <Bell size={18} style={{ color: 'var(--neon-violet)', flexShrink: 0 }} />
+          <p className="text-xs flex-1" style={{ color: 'var(--text-secondary)' }}>
+            {t('notifications.enableHint')}
+          </p>
+          <button onClick={handleEnableNotifs}
+            className="text-xs px-3 py-1.5 rounded-lg font-medium flex-shrink-0"
+            style={{ background: 'var(--neon-violet)', color: '#fff' }}>
+            {t('notifications.enable')}
+          </button>
+          <button onClick={dismissNotifBanner}
+            className="text-xs px-2 py-1.5 rounded-lg flex-shrink-0"
+            style={{ color: 'var(--text-muted)' }}>
+            {t('ui.close')}
+          </button>
+        </div>
+      )}
 
       {/* Approval management */}
       <ApprovalList />

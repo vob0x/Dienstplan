@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState } from 'react'
+import { lazy, Suspense, useState, useMemo } from 'react'
 import { useUiStore } from '@/stores/uiStore'
 import { useAuthStore } from '@/stores/authStore'
 import { useTeamStore } from '@/stores/teamStore'
@@ -64,7 +64,22 @@ export default function Layout() {
   // Setup keyboard shortcuts
   useKeyboardShortcuts(true)
 
-  const { canAccessView } = usePermissions()
+  const { canAccessView, isPlanner } = usePermissions()
+
+  // Reactive swap badge count
+  const swaps = useSwapStore((s) => s.swaps)
+  const members = useDutyStore((s) => s.members)
+  const swapBadge = useMemo(() => {
+    if (!profile) return 0
+    const myMember = members.find((m) => m.user_id === profile.id)
+    if (!myMember) return 0
+    let count = 0
+    for (const s of swaps) {
+      if (s.status === 'pending_responder' && s.target_member_id === myMember.id) count++
+      if ((s.status === 'accepted' || s.status === 'pending_approval') && isPlanner) count++
+    }
+    return count
+  }, [swaps, members, profile, isPlanner])
 
   const allNavItems: Array<{ id: ViewType; icon: typeof Calendar; label: string }> = [
     { id: 'calendar', icon: Calendar, label: t('nav.calendar') },
@@ -116,7 +131,15 @@ export default function Layout() {
                   title={`${item.label} (Alt+${shortcutKey})`}
                   aria-current={active ? 'page' : undefined}
                 >
-                  <item.icon size={18} />
+                  <span className="relative">
+                    <item.icon size={18} />
+                    {item.id === 'team' && swapBadge > 0 && (
+                      <span className="absolute -top-1.5 -right-2 min-w-[16px] h-4 flex items-center justify-center px-1 rounded-full text-[10px] font-bold animate-pulse"
+                        style={{ background: 'var(--neon-violet)', color: '#fff' }}>
+                        {swapBadge}
+                      </span>
+                    )}
+                  </span>
                   {item.label}
                 </button>
               )
@@ -196,7 +219,15 @@ export default function Layout() {
                 style={{ color: active ? 'var(--neon-cyan)' : 'var(--text-muted)', fontSize: '0.65rem' }}
                 aria-current={active ? 'page' : undefined}
               >
-                <item.icon size={20} strokeWidth={active ? 2.5 : 2} />
+                <span className="relative">
+                  <item.icon size={20} strokeWidth={active ? 2.5 : 2} />
+                  {item.id === 'team' && swapBadge > 0 && (
+                    <span className="absolute -top-1 -right-2.5 min-w-[16px] h-4 flex items-center justify-center px-1 rounded-full text-[10px] font-bold animate-pulse"
+                      style={{ background: 'var(--neon-violet)', color: '#fff' }}>
+                      {swapBadge}
+                    </span>
+                  )}
+                </span>
                 <span>{item.label}</span>
               </button>
             )

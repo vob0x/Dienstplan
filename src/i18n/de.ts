@@ -116,6 +116,10 @@ export const de = {
     online: 'Verbunden',
     refresh: 'Daten aktualisieren',
   },
+  notifications: {
+    enable: 'Aktivieren',
+    enableHint: 'Benachrichtigungen aktivieren, um über Tausch-Anfragen informiert zu werden.',
+  },
   errors: {
     network: 'Netzwerkfehler. Bitte versuche es später.',
     unknown: 'Ein Fehler ist aufgetreten.',
