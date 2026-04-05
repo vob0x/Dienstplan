@@ -1,5 +1,5 @@
-// Dienstplan Service Worker – Cache-first with network fallback
-const CACHE_NAME = 'dienstplan-v6.0.0'
+// Dienstplan Service Worker – smart caching for hashed assets
+const CACHE_NAME = 'dienstplan-v6.1.0'
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -9,7 +9,7 @@ const STATIC_ASSETS = [
   './icon-512.png',
 ]
 
-// Install: cache static shell
+// Install: cache static shell, activate immediately
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) =>
@@ -21,7 +21,7 @@ self.addEventListener('install', (event) => {
   self.skipWaiting()
 })
 
-// Activate: clean old caches
+// Activate: clean ALL old caches
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) =>
@@ -33,7 +33,7 @@ self.addEventListener('activate', (event) => {
   self.clients.claim()
 })
 
-// Fetch: network-first for API, cache-first for assets
+// Fetch strategy
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url)
 
@@ -42,9 +42,33 @@ self.addEventListener('fetch', (event) => {
   if (url.hostname.includes('supabase')) return
   if (url.pathname.startsWith('/auth/')) return
 
-  // Fonts & static assets: cache-first
+  // Hashed assets (e.g. index-ChjhOf_B.js, icons-Xyz123.css)
+  // These have unique hashes — safe to cache forever, but MUST use network-first
+  // so a new deploy with new hashes always wins
+  const isHashedAsset = url.pathname.match(/\/assets\/.*-[A-Za-z0-9_-]{6,}\.(js|css)$/)
+
+  if (isHashedAsset) {
+    event.respondWith(
+      fetch(event.request)
+        .then((response) => {
+          if (response.ok) {
+            const clone = response.clone()
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone))
+          }
+          return response
+        })
+        .catch(() =>
+          caches.match(event.request).then((cached) =>
+            cached || new Response('Asset not available offline', { status: 503 })
+          )
+        )
+    )
+    return
+  }
+
+  // Fonts & static non-hashed assets: cache-first (these don't change)
   if (url.hostname.includes('googleapis.com') || url.hostname.includes('gstatic.com') ||
-      url.pathname.match(/\.(js|css|png|svg|woff2?|ttf)$/)) {
+      url.pathname.match(/\.(png|svg|woff2?|ttf|ico)$/)) {
     event.respondWith(
       caches.match(event.request).then((cached) => {
         if (cached) return cached

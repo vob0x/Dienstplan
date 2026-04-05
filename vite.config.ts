@@ -28,6 +28,9 @@ export default defineConfig({
           if (id.includes('node_modules/@supabase')) {
             return 'supabase'
           }
+          if (id.includes('node_modules/lucide-react')) {
+            return 'icons'
+          }
         },
       },
     },
