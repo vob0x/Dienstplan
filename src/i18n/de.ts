@@ -111,7 +111,7 @@ export const de = {
     theme: { dark: 'Dunkel', light: 'Hell' },
     language: { de: 'Deutsch', fr: 'Français' },
     overlap: 'Überlappung erkannt',
-    overlapDetail: 'Folgende Mitarbeiter haben am gleichen Tag Ferien:',
+    overlapDetail: 'Mehrere Mitarbeiter mit gleichem Dienst am selben Tag:',
     offline: 'Offline-Modus',
     online: 'Verbunden',
     refresh: 'Daten aktualisieren',

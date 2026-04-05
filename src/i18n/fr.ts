@@ -104,7 +104,7 @@ export const fr = {
     theme: { dark: 'Sombre', light: 'Clair' },
     language: { de: 'Deutsch', fr: 'Français' },
     overlap: 'Chevauchement détecté',
-    overlapDetail: 'Les collaborateurs suivants sont en vacances le même jour:',
+    overlapDetail: 'Plusieurs collaborateurs avec le même service le même jour:',
     offline: 'Mode hors ligne',
     online: 'Connecté',
     refresh: 'Actualiser les données',

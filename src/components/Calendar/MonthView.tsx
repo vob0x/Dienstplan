@@ -14,7 +14,7 @@ export default function MonthView() {
   const { year, month, paintMode, paintCategoryId } = useUiStore()
   const { members, categories, setDuty, getDuties } = useDutyStore()
 
-  const { canEditDuty, canUsePaintMode } = usePermissions()
+  const { canEditDuty, canUsePaintMode, isPlanner } = usePermissions()
 
   const [picker, setPicker] = useState<{ memberId: string; date: string } | null>(null)
   const [memberSearch, setMemberSearch] = useState('')
@@ -54,26 +54,38 @@ export default function MonthView() {
     }
   }, [paintMode, paintCategoryId, setDuty, getDuties, canEditDuty, canUsePaintMode])
 
-  // Detect vacation overlaps: dates where 2+ members have a requires_approval category (e.g. Ferien)
+  // Detect overlaps: dates where 2+ members share the same absence category OR the same duty type
+  // Different duty types on the same day = normal, no warning needed
   const overlaps = useMemo(() => {
-    const approvalCatIds = new Set(categories.filter((c) => c.requires_approval).map((c) => c.id))
-    if (approvalCatIds.size === 0) return []
+    if (!isPlanner) return [] // Only visible to admin/planner
 
-    const dateMembers: Record<string, string[]> = {}
+    const monthPrefix = `${year}-${String(month + 1).padStart(2, '0')}`
+    const catMap = new Map(categories.map((c) => [c.id, c]))
+
+    // Group by date+category → list of member names
+    const dateCatMembers: Record<string, string[]> = {}
     for (const duty of duties) {
-      if (!duty.date.startsWith(`${year}-${String(month + 1).padStart(2, '0')}`)) continue
-      if (!approvalCatIds.has(duty.category_id)) continue
+      if (!duty.date.startsWith(monthPrefix)) continue
       const member = members.find((m) => m.id === duty.member_id)
       if (!member || !member.is_active) continue
-      if (!dateMembers[duty.date]) dateMembers[duty.date] = []
-      dateMembers[duty.date].push(member.name)
+      const key = `${duty.date}::${duty.category_id}`
+      if (!dateCatMembers[key]) dateCatMembers[key] = []
+      dateCatMembers[key].push(member.name)
     }
 
-    return Object.entries(dateMembers)
-      .filter(([, names]) => names.length >= 2)
-      .map(([date, names]) => ({ date, names }))
-      .sort((a, b) => a.date.localeCompare(b.date))
-  }, [duties, categories, members, year, month])
+    // Filter: 2+ members with the same category on the same date
+    // Only for absence categories (requires_approval) or identical regular duties
+    const results: { date: string; categoryName: string; names: string[] }[] = []
+    for (const [key, names] of Object.entries(dateCatMembers)) {
+      if (names.length < 2) continue
+      const [date, categoryId] = key.split('::')
+      const cat = catMap.get(categoryId)
+      if (!cat) continue
+      results.push({ date, categoryName: cat.name, names })
+    }
+
+    return results.sort((a, b) => a.date.localeCompare(b.date))
+  }, [duties, categories, members, year, month, isPlanner])
 
   return (
     <div className="flex flex-col" style={{ minHeight: 0 }}>
@@ -86,11 +98,11 @@ export default function MonthView() {
           <AlertTriangle size={18} className="flex-shrink-0 mt-0.5" style={{ color: 'var(--vacation-text)' }} />
           <div className="text-xs" style={{ color: 'var(--vacation-text)' }}>
             <div className="font-bold mb-1">{t('ui.overlap')}</div>
-            {overlaps.map((o) => {
+            {overlaps.map((o, idx) => {
               const d = new Date(o.date + 'T00:00:00')
               return (
-                <div key={o.date}>
-                  {d.getDate()}.{d.getMonth() + 1}.: {o.names.join(', ')}
+                <div key={idx}>
+                  {d.getDate()}.{d.getMonth() + 1}. <span className="font-semibold">{o.categoryName}</span>: {o.names.join(', ')}
                 </div>
               )
             })}
