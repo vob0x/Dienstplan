@@ -227,14 +227,23 @@ export const useTeamStore = create<TeamState>((set, get) => ({
       const { data: { session } } = await supabaseClient.auth.getSession()
       if (!session?.user) return
 
+      // Remove from team_members
       await supabaseClient
         .from('team_members')
         .delete()
         .eq('team_id', team.id)
         .eq('user_id', session.user.id)
 
+      // Remove role
       await supabaseClient
         .from('dp_roles')
+        .delete()
+        .eq('team_id', team.id)
+        .eq('user_id', session.user.id)
+
+      // Remove dp_member entry (so other team members' calendars update)
+      await supabaseClient
+        .from('dp_members')
         .delete()
         .eq('team_id', team.id)
         .eq('user_id', session.user.id)
