@@ -126,19 +126,20 @@ export default function Layout() {
   const [moreMenuOpen, setMoreMenuOpen] = useState(false)
   const [showSetup, setShowSetup] = useState(false)
   const isMobile = useIsMobile()
-  const { canAccessView, isPlanner } = usePermissions()
+  const { canAccessView, isPlanner, isAdmin } = usePermissions()
+  const dutyLoading = useDutyStore((s) => s.loading)
 
   const fetchTeamData = useTeamStore((s) => s.fetchTeamData)
 
-  // Check if setup wizard should show (only for admin/planner — members joining a team skip it)
+  // Check if setup wizard should show (admin only, after data has loaded)
   useEffect(() => {
-    if (team && members.length === 0 && categories.length === 0 && isPlanner) {
+    if (team && !dutyLoading && members.length === 0 && categories.length === 0 && isAdmin) {
       const setupDone = localStorage.getItem('dp_setup_complete')
       if (!setupDone) {
         setShowSetup(true)
       }
     }
-  }, [team, members.length, categories.length, isPlanner])
+  }, [team, dutyLoading, members.length, categories.length, isAdmin])
 
   const handleRefresh = async () => {
     if (!team || refreshing) return
