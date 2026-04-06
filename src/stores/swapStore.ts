@@ -25,6 +25,22 @@ export interface SwapCreateInput {
   requester_category_id: string | null
   target_category_id: string | null
   target_date: string
+  swap_group_id?: string | null
+  requester_note: string | null
+}
+
+/** Input for a multi-date batch swap — one entry per date */
+export interface BatchSwapInput {
+  team_id: string
+  swap_type: SwapType
+  requester_member_id: string
+  target_member_id: string
+  /** Per-date entries: date → categories */
+  dates: Array<{
+    target_date: string
+    requester_category_id: string | null
+    target_category_id: string | null
+  }>
   requester_note: string | null
 }
 
@@ -37,17 +53,29 @@ interface SwapState {
   /** Member or Planer creates a swap request */
   requestSwap: (input: SwapCreateInput) => Promise<DpShiftSwap | null>
 
+  /** Create a batch of swaps for multiple dates (linked by swap_group_id) */
+  requestBatchSwap: (input: BatchSwapInput) => Promise<DpShiftSwap[]>
+
   /** Admin creates a one-way reassignment (skips responder step) */
   createReassignment: (input: SwapCreateInput) => Promise<DpShiftSwap | null>
 
   /** Target member accepts or rejects */
   respondToSwap: (swapId: string, accept: boolean, note?: string) => Promise<void>
 
+  /** Respond to all swaps in a group at once */
+  respondToGroup: (groupId: string, accept: boolean, note?: string) => Promise<void>
+
   /** Admin/Planer approves or rejects an accepted swap */
   approveSwap: (swapId: string, approve: boolean, adminUserId: string, note?: string) => Promise<void>
 
+  /** Approve/reject all swaps in a group at once */
+  approveGroup: (groupId: string, approve: boolean, adminUserId: string, note?: string) => Promise<void>
+
   /** Requester cancels their own pending swap */
   cancelSwap: (swapId: string) => Promise<void>
+
+  /** Cancel all swaps in a group at once */
+  cancelGroup: (groupId: string) => Promise<void>
 
   /** Admin deletes a swap from history */
   deleteSwap: (swapId: string) => Promise<void>
@@ -82,11 +110,13 @@ export const useSwapStore = create<SwapState>((set, get) => ({
   // ---------------------------------------------------------------------------
   requestSwap: async (input) => {
     const now = new Date().toISOString()
+    const isReassignment = input.swap_type === 'reassignment'
     const swap: DpShiftSwap = {
       ...input,
       id: generateId(),
-      swap_type: 'swap',
-      status: 'pending_responder',
+      swap_type: input.swap_type,
+      swap_group_id: input.swap_group_id || null,
+      status: isReassignment ? 'pending_approval' : 'pending_responder',
       responder_note: null,
       admin_note: null,
       accepted_at: null,
@@ -112,12 +142,36 @@ export const useSwapStore = create<SwapState>((set, get) => ({
   },
 
   // ---------------------------------------------------------------------------
+  requestBatchSwap: async (input) => {
+    const groupId = generateId()
+    const results: DpShiftSwap[] = []
+
+    for (const entry of input.dates) {
+      const swap = await get().requestSwap({
+        team_id: input.team_id,
+        swap_type: input.swap_type,
+        requester_member_id: input.requester_member_id,
+        target_member_id: input.target_member_id,
+        requester_category_id: entry.requester_category_id,
+        target_category_id: entry.target_category_id,
+        target_date: entry.target_date,
+        swap_group_id: input.dates.length > 1 ? groupId : null,
+        requester_note: input.requester_note,
+      })
+      if (swap) results.push(swap)
+    }
+
+    return results
+  },
+
+  // ---------------------------------------------------------------------------
   createReassignment: async (input) => {
     const now = new Date().toISOString()
     const swap: DpShiftSwap = {
       ...input,
       id: generateId(),
       swap_type: 'reassignment',
+      swap_group_id: input.swap_group_id || null,
       status: 'pending_approval', // Skip responder step
       responder_note: null,
       admin_note: null,
@@ -236,6 +290,30 @@ export const useSwapStore = create<SwapState>((set, get) => ({
   },
 
   // ---------------------------------------------------------------------------
+  cancelGroup: async (groupId) => {
+    const groupSwaps = get().swaps.filter((s) => s.swap_group_id === groupId && !['approved', 'rejected_responder', 'rejected_approval', 'cancelled'].includes(s.status))
+    for (const sw of groupSwaps) {
+      await get().cancelSwap(sw.id)
+    }
+  },
+
+  // ---------------------------------------------------------------------------
+  respondToGroup: async (groupId, accept, note) => {
+    const groupSwaps = get().swaps.filter((s) => s.swap_group_id === groupId && s.status === 'pending_responder')
+    for (const sw of groupSwaps) {
+      await get().respondToSwap(sw.id, accept, note)
+    }
+  },
+
+  // ---------------------------------------------------------------------------
+  approveGroup: async (groupId, approve, adminUserId, note) => {
+    const groupSwaps = get().swaps.filter((s) => s.swap_group_id === groupId && (s.status === 'accepted' || s.status === 'pending_approval'))
+    for (const sw of groupSwaps) {
+      await get().approveSwap(sw.id, approve, adminUserId, note)
+    }
+  },
+
+  // ---------------------------------------------------------------------------
   deleteSwap: async (swapId) => {
     const swap = get().swaps.find((s) => s.id === swapId)
     set((s) => ({ swaps: s.swaps.filter((sw) => sw.id !== swapId) }))
@@ -258,10 +336,17 @@ async function executeSwapDuties(swap: DpShiftSwap) {
 
   try {
     if (swap.swap_type === 'reassignment') {
-      // One-way: move requester's specific duty to target
       if (swap.requester_category_id) {
+        // One-way: move a specific duty from requester to target
         await ds.removeDuty(reqId, date, swap.requester_category_id)
         await ds.setDuty(tgtId, date, swap.requester_category_id)
+      } else {
+        // No specific category: move ALL requester duties on that date to target
+        const reqDuties = ds.getDuties(reqId, date)
+        for (const d of reqDuties) {
+          await ds.removeDuty(reqId, date, d.category_id)
+          await ds.setDuty(tgtId, date, d.category_id)
+        }
       }
       return
     }
@@ -270,16 +355,27 @@ async function executeSwapDuties(swap: DpShiftSwap) {
     const reqCatId = swap.requester_category_id
     const tgtCatId = swap.target_category_id
 
-    // Remove the swapped duties first
-    if (reqCatId) await ds.removeDuty(reqId, date, reqCatId)
-    if (tgtCatId) await ds.removeDuty(tgtId, date, tgtCatId)
+    if (reqCatId || tgtCatId) {
+      // Specific categories selected — swap them
+      if (reqCatId) await ds.removeDuty(reqId, date, reqCatId)
+      if (tgtCatId) await ds.removeDuty(tgtId, date, tgtCatId)
+      if (reqCatId) await ds.setDuty(tgtId, date, reqCatId)
+      if (tgtCatId) await ds.setDuty(reqId, date, tgtCatId)
+    } else {
+      // No specific categories: swap ALL duties between both members
+      const reqDuties = ds.getDuties(reqId, date)
+      const tgtDuties = ds.getDuties(tgtId, date)
 
-    // Re-assign swapped
-    if (reqCatId) await ds.setDuty(tgtId, date, reqCatId)
-    if (tgtCatId) await ds.setDuty(reqId, date, tgtCatId)
+      // Remove all
+      for (const d of reqDuties) await ds.removeDuty(reqId, date, d.category_id)
+      for (const d of tgtDuties) await ds.removeDuty(tgtId, date, d.category_id)
+
+      // Re-assign swapped
+      for (const d of reqDuties) await ds.setDuty(tgtId, date, d.category_id)
+      for (const d of tgtDuties) await ds.setDuty(reqId, date, d.category_id)
+    }
   } catch (e) {
     console.error('[Swap] executeSwapDuties failed — calendar may be inconsistent. Refreshing…', e)
-    // Re-fetch all data to restore consistent state
     const teamId = swap.team_id
     if (teamId) {
       await ds.fetchAll(teamId)

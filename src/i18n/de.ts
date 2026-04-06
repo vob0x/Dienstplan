@@ -2,6 +2,7 @@ export const de = {
   app: { name: 'Dienstplan', tagline: 'Schichtplanung für Teams' },
   nav: { calendar: 'Kalender', team: 'Team', manage: 'Verwaltung', stats: 'Statistiken', main: 'Hauptnavigation', mobile: 'Mobile Navigation' },
   views: { month: 'Monat', week: 'Woche', day: 'Tag', year: 'Jahr' },
+  weekdaysShort: ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'],
   auth: {
     signIn: 'Anmelden', signUp: 'Registrieren', signOut: 'Abmelden',
     codename: 'Codename', password: 'Passwort', passwordConfirm: 'Passwort bestätigen',
@@ -82,6 +83,11 @@ export const de = {
     // Types
     typeSwap: 'Tausch', typeReassignment: 'Zuweisung',
     reassignmentHint: 'Einseitige Zuweisung — kein Rücktausch.',
+    // Multi-date
+    multiDateHint: 'Mehrere Daten möglich — Datum eingeben und + drücken.',
+    datesSelected: 'Tage ausgewählt',
+    groupedSwap: 'Gruppierter Tausch',
+    categoryAppliedToAll: 'wird auf alle Tage angewendet',
     // Other
     noSwaps: 'Keine offenen Tausch-Anfragen.',
     createError: 'Fehler beim Erstellen der Anfrage',

@@ -110,6 +110,8 @@ export interface DpShiftSwap {
   /** Category the target has (on target_date) — null if no duty */
   target_category_id: string | null
   target_date: string
+  /** Groups multi-date swaps together — null for single-date swaps */
+  swap_group_id: string | null
   status: SwapStatus
   requester_note: string | null
   responder_note: string | null

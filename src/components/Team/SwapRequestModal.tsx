@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useCallback } from 'react'
 import { useSwapStore } from '@/stores/swapStore'
 import { useDutyStore } from '@/stores/dutyStore'
 import { useTeamStore } from '@/stores/teamStore'
@@ -8,7 +8,7 @@ import { useI18n } from '@/i18n'
 import { usePermissions } from '@/lib/permissions'
 import { toDateStr } from '@/lib/utils'
 import Modal from '@/components/UI/Modal'
-import { ArrowRight, ArrowLeft, ArrowRightLeft, ArrowDownRight } from 'lucide-react'
+import { ArrowRight, ArrowLeft, ArrowRightLeft, ArrowDownRight, Plus, X as XIcon, CalendarDays } from 'lucide-react'
 
 interface Props {
   open: boolean
@@ -19,7 +19,7 @@ type Step = 'date' | 'duty' | 'partner' | 'confirm'
 
 export default function SwapRequestModal({ open, onClose }: Props) {
   const { t, tArray } = useI18n()
-  const { requestSwap, createReassignment } = useSwapStore()
+  const { requestBatchSwap } = useSwapStore()
   const { members: dpMembers, categories, getDuties } = useDutyStore()
   const team = useTeamStore((s) => s.team)
   const profile = useAuthStore((s) => s.profile)
@@ -28,7 +28,9 @@ export default function SwapRequestModal({ open, onClose }: Props) {
   const months = tArray('months') as string[]
 
   const [step, setStep] = useState<Step>('date')
-  const [targetDate, setTargetDate] = useState('')
+  // Multi-date: array of selected dates
+  const [targetDates, setTargetDates] = useState<string[]>([])
+  const [dateInput, setDateInput] = useState('')
   const [requesterMemberId, setRequesterMemberId] = useState('')
   const [requesterCategoryId, setRequesterCategoryId] = useState<string | null>(null)
   const [targetMemberId, setTargetMemberId] = useState('')
@@ -42,24 +44,28 @@ export default function SwapRequestModal({ open, onClose }: Props) {
   const minDate = toDateStr(today)
   const maxDateStr = toDateStr(new Date(today.getFullYear() + 1, today.getMonth(), today.getDate()))
 
-  // Auto-detect requester: the dp_member linked to the current user
+  // Auto-detect requester
   const myMember = useMemo(() => {
     if (!profile) return null
     return dpMembers.find((m) => m.user_id === profile.id) || null
   }, [dpMembers, profile])
 
-  // Duties of requester on selected date
-  const requesterDuties = useMemo(() => {
-    const mid = requesterMemberId || myMember?.id
-    if (!mid || !targetDate) return []
-    return getDuties(mid, targetDate)
-  }, [requesterMemberId, myMember, targetDate, getDuties])
+  const effectiveRequesterId = requesterMemberId || myMember?.id || ''
 
-  // Duties of target on selected date
+  // For single-date mode (duty selection): use first date
+  const primaryDate = targetDates[0] || ''
+
+  // Duties of requester on primary date (for duty selection step)
+  const requesterDuties = useMemo(() => {
+    if (!effectiveRequesterId || !primaryDate) return []
+    return getDuties(effectiveRequesterId, primaryDate)
+  }, [effectiveRequesterId, primaryDate, getDuties])
+
+  // Duties of target on primary date
   const targetDuties = useMemo(() => {
-    if (!targetMemberId || !targetDate) return []
-    return getDuties(targetMemberId, targetDate)
-  }, [targetMemberId, targetDate, getDuties])
+    if (!targetMemberId || !primaryDate) return []
+    return getDuties(targetMemberId, primaryDate)
+  }, [targetMemberId, primaryDate, getDuties])
 
   const getCatName = (catId: string | null) => {
     if (!catId) return '—'
@@ -75,15 +81,36 @@ export default function SwapRequestModal({ open, onClose }: Props) {
   }
   const getMemberName = (mid: string) => dpMembers.find((m) => m.id === mid)?.name || '?'
 
-  const formatDate = (dateStr: string) => {
+  const formatDate = useCallback((dateStr: string) => {
     if (!dateStr) return ''
     const d = new Date(dateStr + 'T00:00:00')
     return `${d.getDate()}. ${months[d.getMonth()]} ${d.getFullYear()}`
-  }
+  }, [months])
+
+  const weekdaysShort = tArray('weekdaysShort') as string[]
+
+  const formatDateShort = useCallback((dateStr: string) => {
+    if (!dateStr) return ''
+    const d = new Date(dateStr + 'T00:00:00')
+    return `${weekdaysShort[d.getDay()]} ${d.getDate()}.${d.getMonth() + 1}.`
+  }, [weekdaysShort])
+
+  const addDate = useCallback((date: string) => {
+    if (!date || targetDates.includes(date)) { setDateInput(''); return }
+    // Validate: not in the past, not beyond maxDate
+    if (date < minDate || date > maxDateStr) { setDateInput(''); return }
+    setTargetDates((prev) => [...prev, date].sort())
+    setDateInput('')
+  }, [targetDates, minDate, maxDateStr])
+
+  const removeDate = useCallback((date: string) => {
+    setTargetDates((prev) => prev.filter((d) => d !== date))
+  }, [])
 
   const reset = () => {
     setStep('date')
-    setTargetDate('')
+    setTargetDates([])
+    setDateInput('')
     setRequesterMemberId('')
     setRequesterCategoryId(null)
     setTargetMemberId('')
@@ -96,28 +123,35 @@ export default function SwapRequestModal({ open, onClose }: Props) {
   const handleClose = () => { reset(); onClose() }
 
   const handleSubmit = async () => {
-    if (!team) return
-    const reqId = requesterMemberId || myMember?.id
-    if (!reqId || !targetMemberId || !targetDate) return
+    if (!team || targetDates.length === 0) return
+    const reqId = effectiveRequesterId
+    if (!reqId || !targetMemberId) return
 
     setSubmitting(true)
     try {
-      const input = {
+      // Build per-date entries
+      // For multi-date: use the same category selection for all dates
+      // (the requester picks a category from the first date, applied uniformly)
+      const dates = targetDates.map((date) => {
+        // Auto-detect target's first duty category on each date
+        const tgtDuties = getDuties(targetMemberId, date)
+        const autoTargetCat = targetCategoryId || (tgtDuties.length > 0 ? tgtDuties[0].category_id : null)
+
+        return {
+          target_date: date,
+          requester_category_id: requesterCategoryId,
+          target_category_id: swapType === 'swap' ? autoTargetCat : null,
+        }
+      })
+
+      await requestBatchSwap({
         team_id: team.id,
-        swap_type: swapType as 'swap' | 'reassignment',
+        swap_type: swapType,
         requester_member_id: reqId,
         target_member_id: targetMemberId,
-        requester_category_id: requesterCategoryId,
-        target_category_id: targetCategoryId,
-        target_date: targetDate,
+        dates,
         requester_note: note || null,
-      }
-
-      if (swapType === 'reassignment') {
-        await createReassignment(input)
-      } else {
-        await requestSwap(input)
-      }
+      })
 
       addToast({ type: 'success', message: t('swaps.requestSent') })
       handleClose()
@@ -131,8 +165,9 @@ export default function SwapRequestModal({ open, onClose }: Props) {
   // Step navigation
   const canGoNext = () => {
     switch (step) {
-      case 'date': return !!targetDate
-      case 'duty': return true // category selection is optional (whole day swap)
+      // Allow next if dates are selected OR if a valid date is typed in the input
+      case 'date': return targetDates.length > 0 || (!!dateInput && dateInput >= minDate && dateInput <= maxDateStr)
+      case 'duty': return true
       case 'partner': return !!targetMemberId
       case 'confirm': return true
     }
@@ -141,10 +176,13 @@ export default function SwapRequestModal({ open, onClose }: Props) {
   const goNext = () => {
     switch (step) {
       case 'date':
-        // If not planner, auto-select own member
-        if (!isPlanner && myMember) {
-          setRequesterMemberId(myMember.id)
+        // Auto-add typed date if not yet added
+        if (dateInput && !targetDates.includes(dateInput) && dateInput >= minDate && dateInput <= maxDateStr) {
+          const updatedDates = [...targetDates, dateInput].sort()
+          setTargetDates(updatedDates)
+          setDateInput('')
         }
+        if (!isPlanner && myMember) setRequesterMemberId(myMember.id)
         setStep('duty')
         break
       case 'duty': setStep('partner'); break
@@ -175,22 +213,70 @@ export default function SwapRequestModal({ open, onClose }: Props) {
         ))}
       </div>
 
-      {/* STEP 1: Date */}
+      {/* STEP 1: Date(s) */}
       {step === 'date' && (
         <div className="space-y-4">
           <label className="block text-xs font-medium" style={{ color: 'var(--text-muted)' }}>
             {t('swaps.selectDate')}
           </label>
-          <input
-            type="date"
-            value={targetDate}
-            onChange={(e) => setTargetDate(e.target.value)}
-            min={minDate}
-            max={maxDateStr}
-            className="w-full px-4 py-3 rounded-xl text-sm outline-none"
-            style={{ background: 'var(--surface-solid)', border: '1px solid var(--border)', color: 'var(--text)' }}
-            autoFocus
-          />
+
+          {/* Date input + add button */}
+          <div className="flex gap-2">
+            <input
+              type="date"
+              value={dateInput}
+              onChange={(e) => setDateInput(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter' && dateInput) { e.preventDefault(); addDate(dateInput) } }}
+              min={minDate}
+              max={maxDateStr}
+              className="flex-1 px-4 py-3 rounded-xl text-sm outline-none"
+              style={{ background: 'var(--surface-solid)', border: '1px solid var(--border)', color: 'var(--text)' }}
+              autoFocus
+            />
+            <button
+              onClick={() => addDate(dateInput)}
+              disabled={!dateInput || targetDates.includes(dateInput)}
+              className="px-3 py-3 rounded-xl text-sm font-medium transition-all"
+              style={{
+                background: dateInput && !targetDates.includes(dateInput) ? 'var(--neon-cyan)' : 'var(--surface)',
+                color: dateInput && !targetDates.includes(dateInput) ? '#0A0B0F' : 'var(--text-muted)',
+              }}
+            >
+              <Plus size={18} />
+            </button>
+          </div>
+
+          {/* Hint for multi-date */}
+          <div className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
+            {t('swaps.multiDateHint')}
+          </div>
+
+          {/* Selected dates list */}
+          {targetDates.length > 0 && (
+            <div className="space-y-1">
+              {targetDates.map((date) => (
+                <div key={date} className="flex items-center justify-between px-3 py-2 rounded-xl"
+                  style={{ background: 'var(--surface-active)', border: '1px solid var(--border)' }}>
+                  <div className="flex items-center gap-2">
+                    <CalendarDays size={14} style={{ color: 'var(--neon-cyan)' }} />
+                    <span className="text-sm" style={{ color: 'var(--text)' }}>{formatDateShort(date)}</span>
+                  </div>
+                  <button onClick={() => removeDate(date)} className="p-1 rounded-lg hover:opacity-80"
+                    style={{ color: 'var(--text-muted)' }}>
+                    <XIcon size={14} />
+                  </button>
+                </div>
+              ))}
+              {targetDates.length > 1 && (
+                <div className="flex items-center gap-1.5 pt-1">
+                  <span className="text-xs px-2 py-0.5 rounded-full font-mono"
+                    style={{ background: 'rgba(184,168,224,0.15)', color: 'var(--neon-violet)' }}>
+                    {targetDates.length} {t('swaps.datesSelected')}
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Swap type toggle (planner+ only) */}
           {isPlanner && (
@@ -251,11 +337,16 @@ export default function SwapRequestModal({ open, onClose }: Props) {
             )
           )}
 
-          {/* Duties on that date for the selected requester */}
-          {(requesterMemberId || myMember?.id) && (
+          {/* Duties on primary date for the selected requester */}
+          {effectiveRequesterId && (
             <div>
               <label className="block text-xs font-medium mb-2" style={{ color: 'var(--text-muted)' }}>
-                {t('swaps.selectDuty')} ({formatDate(targetDate)})
+                {t('swaps.selectDuty')} ({formatDate(primaryDate)})
+                {targetDates.length > 1 && (
+                  <span className="ml-1 text-[10px]" style={{ color: 'var(--neon-violet)' }}>
+                    — {t('swaps.categoryAppliedToAll')}
+                  </span>
+                )}
               </label>
               {requesterDuties.length === 0 ? (
                 <div className="text-xs py-3 text-center" style={{ color: 'var(--text-muted)' }}>
@@ -304,16 +395,15 @@ export default function SwapRequestModal({ open, onClose }: Props) {
           </label>
           <div className="space-y-1.5 max-h-60 overflow-y-auto">
             {activeMembers
-              .filter((m) => m.id !== (requesterMemberId || myMember?.id))
+              .filter((m) => m.id !== effectiveRequesterId)
               .map((m) => {
-                const duties = getDuties(m.id, targetDate)
+                const duties = getDuties(m.id, primaryDate)
                 const selected = targetMemberId === m.id
                 return (
                   <button
                     key={m.id}
                     onClick={() => {
                       setTargetMemberId(m.id)
-                      // Auto-select target's first duty category if available
                       setTargetCategoryId(duties.length > 0 ? duties[0].category_id : null)
                     }}
                     className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-left transition-all"
@@ -378,17 +468,29 @@ export default function SwapRequestModal({ open, onClose }: Props) {
       {/* STEP 4: Confirm */}
       {step === 'confirm' && (
         <div className="space-y-4">
-          {/* Summary card */}
+          {/* Summary card — show all dates */}
           <div className="p-4 rounded-xl space-y-3" style={{ background: 'var(--surface-active)', border: '1px solid var(--border)' }}>
-            <div className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>
-              {formatDate(targetDate)}
+            {/* Dates header */}
+            <div className="flex flex-wrap gap-1.5">
+              {targetDates.map((date) => (
+                <span key={date} className="text-xs px-2 py-0.5 rounded-lg font-medium"
+                  style={{ background: 'var(--surface)', color: 'var(--text-muted)' }}>
+                  {formatDateShort(date)}
+                </span>
+              ))}
             </div>
+
+            {targetDates.length > 1 && (
+              <div className="text-[10px]" style={{ color: 'var(--neon-violet)' }}>
+                {targetDates.length} {t('swaps.datesSelected')} — {t('swaps.groupedSwap')}
+              </div>
+            )}
 
             <div className="flex items-center gap-3">
               {/* Requester side */}
               <div className="flex-1 text-center">
                 <div className="text-sm font-medium mb-1" style={{ color: 'var(--text)' }}>
-                  {getMemberName(requesterMemberId || myMember?.id || '')}
+                  {getMemberName(effectiveRequesterId)}
                 </div>
                 <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-bold"
                   style={{ background: `${getCatColor(requesterCategoryId)}22`, color: getCatColor(requesterCategoryId) }}>
@@ -407,10 +509,17 @@ export default function SwapRequestModal({ open, onClose }: Props) {
                   {getMemberName(targetMemberId)}
                 </div>
                 {swapType === 'swap' && (
-                  <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-bold"
-                    style={{ background: `${getCatColor(targetCategoryId)}22`, color: getCatColor(targetCategoryId) }}>
-                    {getCatLetter(targetCategoryId)} {getCatName(targetCategoryId)}
-                  </span>
+                  targetDates.length > 1 && !targetCategoryId ? (
+                    <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-bold"
+                      style={{ background: 'var(--surface)', color: 'var(--text-muted)' }}>
+                      Auto
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-bold"
+                      style={{ background: `${getCatColor(targetCategoryId)}22`, color: getCatColor(targetCategoryId) }}>
+                      {getCatLetter(targetCategoryId)} {getCatName(targetCategoryId)}
+                    </span>
+                  )
                 )}
               </div>
             </div>

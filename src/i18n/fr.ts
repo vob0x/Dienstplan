@@ -2,6 +2,7 @@ export const fr = {
   app: { name: 'Planning', tagline: 'Planification des équipes' },
   nav: { calendar: 'Calendrier', team: 'Équipe', manage: 'Gestion', stats: 'Statistiques', main: 'Navigation principale', mobile: 'Navigation mobile' },
   views: { month: 'Mois', week: 'Semaine', day: 'Jour', year: 'Année' },
+  weekdaysShort: ['Di', 'Lu', 'Ma', 'Me', 'Je', 'Ve', 'Sa'],
   auth: {
     signIn: 'Connexion', signUp: 'Inscription', signOut: 'Déconnexion',
     codename: 'Pseudonyme', password: 'Mot de passe', passwordConfirm: 'Confirmer le mot de passe',
@@ -77,6 +78,10 @@ export const fr = {
     noCategoryHint: 'Sans sélection, la journée entière sera échangée.',
     typeSwap: 'Échange', typeReassignment: 'Réaffectation',
     reassignmentHint: 'Réaffectation unilatérale — pas de retour.',
+    multiDateHint: 'Plusieurs dates possibles — saisir la date et appuyer sur +.',
+    datesSelected: 'jours sélectionnés',
+    groupedSwap: 'Échange groupé',
+    categoryAppliedToAll: 'appliqué à tous les jours',
     noSwaps: 'Aucune demande d\'échange ouverte.',
     createError: 'Erreur lors de la création de la demande',
   },
