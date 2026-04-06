@@ -123,6 +123,18 @@ export const useTeamStore = create<TeamState>((set, get) => ({
 
       // Creator auto-gets admin role via trigger, but ensure it
       const typedTeam = team as Team
+      // Clear stale localStorage data from any previous team
+      const oldTeamJson = localStorage.getItem('dp_team')
+      if (oldTeamJson) {
+        try {
+          const oldTeam = JSON.parse(oldTeamJson) as Team
+          if (oldTeam.id !== typedTeam.id) {
+            localStorage.removeItem(`dp_members_${oldTeam.id}`)
+            localStorage.removeItem(`dp_categories_${oldTeam.id}`)
+            localStorage.removeItem(`dp_duties_${oldTeam.id}`)
+          }
+        } catch {}
+      }
       localStorage.setItem('dp_team', JSON.stringify(typedTeam))
 
       set({
@@ -181,6 +193,18 @@ export const useTeamStore = create<TeamState>((set, get) => ({
         .single()
 
       const typedTeam = team as Team
+      // Clear stale localStorage data from any previous team
+      const oldTeamJson = localStorage.getItem('dp_team')
+      if (oldTeamJson) {
+        try {
+          const oldTeam = JSON.parse(oldTeamJson) as Team
+          if (oldTeam.id !== typedTeam.id) {
+            localStorage.removeItem(`dp_members_${oldTeam.id}`)
+            localStorage.removeItem(`dp_categories_${oldTeam.id}`)
+            localStorage.removeItem(`dp_duties_${oldTeam.id}`)
+          }
+        } catch {}
+      }
       localStorage.setItem('dp_team', JSON.stringify(typedTeam))
       set({ team: typedTeam })
 

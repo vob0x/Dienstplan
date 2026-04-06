@@ -2,8 +2,8 @@
  * Role-Based Permissions System
  *
  * Roles: admin > planner > member
- * - Admin:   Full access (manage members, categories, roles, approve swaps, edit all duties)
- * - Planner: Can edit all duties, use paint mode, view stats. Cannot manage roles.
+ * - Admin:   Full access (manage members, categories, roles, approve swaps, edit all duties, danger zone)
+ * - Planner: Can edit all duties, manage categories, use paint mode, approve swaps, view stats. Cannot manage members or roles.
  * - Member:  Can only edit own duties, request swaps. Limited navigation.
  */
 
@@ -75,9 +75,9 @@ export const permissions = {
     return hasMinRole('planner')
   },
 
-  /** Can add/remove/reorder members */
+  /** Can add/remove/reorder members — admin only */
   canManageMembers(): boolean {
-    return hasMinRole('planner')
+    return isCurrentAdmin()
   },
 
   /** Can add/edit/remove categories */
@@ -138,7 +138,7 @@ export function usePermissions() {
         return member?.user_id === userId
       },
       canUsePaintMode: hasMin('planner'),
-      canManageMembers: hasMin('planner'),
+      canManageMembers: role === 'admin',
       canManageCategories: hasMin('planner'),
       canManageRoles: role === 'admin',
       canApproveSwaps: hasMin('planner'),

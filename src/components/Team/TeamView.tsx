@@ -43,6 +43,8 @@ export default function TeamView() {
       addToast({ type: 'success', message: `${t('team.createdSuccess')} ${newTeam.invite_code}` })
       setCreateOpen(false)
       setTeamName('')
+    } else {
+      addToast({ type: 'error', message: t('errors.unknown') })
     }
   }
 

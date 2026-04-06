@@ -18,6 +18,7 @@ export default function ManageView() {
   const { t } = useI18n()
   const { members, categories, addMember, updateMember, removeMember, reorderMembers, addCategory, updateCategory, removeCategory } = useDutyStore()
   const addToast = useUiStore((s) => s.addToast)
+  const { canManageMembers } = usePermissions()
 
   const [newMemberName, setNewMemberName] = useState('')
   const [editingMember, setEditingMember] = useState<string | null>(null)
@@ -209,80 +210,82 @@ export default function ManageView() {
 
   return (
     <div className="max-w-2xl mx-auto space-y-8">
-      {/* Members Section */}
-      <section>
-        <h2 className="text-lg font-bold mb-4" style={{ fontFamily: 'var(--font-display)', color: 'var(--text)' }}>
-          {t('members.title')}
-        </h2>
+      {/* Members Section — Admin only */}
+      {canManageMembers && (
+        <section>
+          <h2 className="text-lg font-bold mb-4" style={{ fontFamily: 'var(--font-display)', color: 'var(--text)' }}>
+            {t('members.title')}
+          </h2>
 
-        {/* Add member */}
-        <div className="flex gap-2 mb-4">
-          <input
-            type="text" value={newMemberName} onChange={(e) => setNewMemberName(e.target.value)}
-            placeholder={t('members.namePlaceholder')}
-            className="flex-1 px-4 py-2 rounded-xl outline-none text-sm"
-            style={{ background: 'var(--surface-solid)', border: '1px solid var(--border)', color: 'var(--text)' }}
-            onKeyDown={(e) => e.key === 'Enter' && handleAddMember()}
-          />
-          <button onClick={handleAddMember} className="px-4 py-2 rounded-xl font-medium text-sm"
-            style={{ background: 'var(--neon-cyan)', color: '#0A0B0F' }}
-            title={t('members.add')}>
-            <Plus size={18} />
-          </button>
-        </div>
+          {/* Add member */}
+          <div className="flex gap-2 mb-4">
+            <input
+              type="text" value={newMemberName} onChange={(e) => setNewMemberName(e.target.value)}
+              placeholder={t('members.namePlaceholder')}
+              className="flex-1 px-4 py-2 rounded-xl outline-none text-sm"
+              style={{ background: 'var(--surface-solid)', border: '1px solid var(--border)', color: 'var(--text)' }}
+              onKeyDown={(e) => e.key === 'Enter' && handleAddMember()}
+            />
+            <button onClick={handleAddMember} className="px-4 py-2 rounded-xl font-medium text-sm"
+              style={{ background: 'var(--neon-cyan)', color: '#0A0B0F' }}
+              title={t('members.add')}>
+              <Plus size={18} />
+            </button>
+          </div>
 
-        {/* Member list */}
-        <div className="space-y-1">
-          {members.map((member) => {
-            const isFromTeam = !!member.user_id
-            return (
-              <div key={member.id}
-                draggable={editingMember !== member.id}
-                onDragStart={() => handleDragStart(member.id)}
-                onDragOver={(e) => handleDragOver(e, member.id)}
-                onDrop={() => handleDrop(member.id)}
-                onDragEnd={handleDragEnd}
-                className="flex items-center gap-2 px-3 py-2 rounded-xl group transition-all"
-                style={{
-                  background: dragOverMember === member.id ? 'var(--surface-active)' : 'var(--surface)',
-                  border: dragOverMember === member.id ? '1px solid var(--neon-cyan)' : '1px solid var(--border-light)',
-                  opacity: dragMember.current === member.id ? 0.5 : 1,
-                }}>
-                <GripVertical size={16} style={{ color: 'var(--text-muted)', cursor: 'grab' }} />
+          {/* Member list */}
+          <div className="space-y-1">
+            {members.map((member) => {
+              const isFromTeam = !!member.user_id
+              return (
+                <div key={member.id}
+                  draggable={editingMember !== member.id}
+                  onDragStart={() => handleDragStart(member.id)}
+                  onDragOver={(e) => handleDragOver(e, member.id)}
+                  onDrop={() => handleDrop(member.id)}
+                  onDragEnd={handleDragEnd}
+                  className="flex items-center gap-2 px-3 py-2 rounded-xl group transition-all"
+                  style={{
+                    background: dragOverMember === member.id ? 'var(--surface-active)' : 'var(--surface)',
+                    border: dragOverMember === member.id ? '1px solid var(--neon-cyan)' : '1px solid var(--border-light)',
+                    opacity: dragMember.current === member.id ? 0.5 : 1,
+                  }}>
+                  <GripVertical size={16} style={{ color: 'var(--text-muted)', cursor: 'grab' }} />
 
-                {editingMember === member.id ? (
-                  <>
-                    <input type="text" value={editMemberName} onChange={(e) => setEditMemberName(e.target.value)}
-                      className="flex-1 px-2 py-1 rounded-lg text-sm outline-none"
-                      style={{ background: 'var(--surface-solid)', border: '1px solid var(--border-hover)', color: 'var(--text)' }}
-                      onKeyDown={(e) => { if (e.key === 'Enter') handleSaveMember(member.id); if (e.key === 'Escape') setEditingMember(null) }}
-                      autoFocus />
-                    <button onClick={() => handleSaveMember(member.id)} style={{ color: 'var(--success)' }}><Check size={16} /></button>
-                    <button onClick={() => setEditingMember(null)} style={{ color: 'var(--text-muted)' }}><XIcon size={16} /></button>
-                  </>
-                ) : (
-                  <>
-                    <span className="flex-1 text-sm font-medium" style={{ color: 'var(--text)' }}>{member.name}</span>
-                    {isFromTeam && (
-                      <span title={t('members.alreadyActive')}><Link2 size={14} style={{ color: 'var(--neon-cyan)', flexShrink: 0 }} /></span>
-                    )}
-                    <button onClick={() => { setEditingMember(member.id); setEditMemberName(member.name) }}
-                      className="opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: 'var(--text-muted)' }}
-                      title={t('members.edit')}>
-                      <Pencil size={14} />
-                    </button>
-                    <button onClick={() => setDeleteMember(member.id)}
-                      className="opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: 'var(--danger)' }}
-                      title={t('members.remove')}>
-                      <Trash2 size={14} />
-                    </button>
-                  </>
-                )}
-              </div>
-            )
-          })}
-        </div>
-      </section>
+                  {editingMember === member.id ? (
+                    <>
+                      <input type="text" value={editMemberName} onChange={(e) => setEditMemberName(e.target.value)}
+                        className="flex-1 px-2 py-1 rounded-lg text-sm outline-none"
+                        style={{ background: 'var(--surface-solid)', border: '1px solid var(--border-hover)', color: 'var(--text)' }}
+                        onKeyDown={(e) => { if (e.key === 'Enter') handleSaveMember(member.id); if (e.key === 'Escape') setEditingMember(null) }}
+                        autoFocus />
+                      <button onClick={() => handleSaveMember(member.id)} style={{ color: 'var(--success)' }}><Check size={16} /></button>
+                      <button onClick={() => setEditingMember(null)} style={{ color: 'var(--text-muted)' }}><XIcon size={16} /></button>
+                    </>
+                  ) : (
+                    <>
+                      <span className="flex-1 text-sm font-medium" style={{ color: 'var(--text)' }}>{member.name}</span>
+                      {isFromTeam && (
+                        <span title={t('members.alreadyActive')}><Link2 size={14} style={{ color: 'var(--neon-cyan)', flexShrink: 0 }} /></span>
+                      )}
+                      <button onClick={() => { setEditingMember(member.id); setEditMemberName(member.name) }}
+                        className="opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: 'var(--text-muted)' }}
+                        title={t('members.edit')}>
+                        <Pencil size={14} />
+                      </button>
+                      <button onClick={() => setDeleteMember(member.id)}
+                        className="opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: 'var(--danger)' }}
+                        title={t('members.remove')}>
+                        <Trash2 size={14} />
+                      </button>
+                    </>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </section>
+      )}
 
       {/* Categories Section */}
       <section>

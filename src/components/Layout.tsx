@@ -355,7 +355,7 @@ export default function Layout() {
               <button
                 key={item.id}
                 onClick={() => { setCurrentView(item.id); setMoreMenuOpen(false) }}
-                className="flex flex-col items-center gap-0.5 py-1.5 px-3 transition-all min-w-[60px] min-h-[48px] justify-center"
+                className="relative flex flex-col items-center gap-0.5 py-1.5 px-3 transition-all min-w-[60px] min-h-[48px] justify-center"
                 style={{ color: active ? 'var(--neon-cyan)' : 'var(--text-muted)', fontSize: '0.6rem' }}
                 aria-current={active ? 'page' : undefined}
               >
