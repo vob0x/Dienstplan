@@ -1,6 +1,8 @@
 import { create } from 'zustand'
 import { supabaseClient, isSupabaseAvailable } from '@/lib/supabase'
 import { generateInviteCode } from '@/lib/utils'
+import { useDutyStore, unsubscribeFromDutySync } from '@/stores/dutyStore'
+import { useSwapStore } from '@/stores/swapStore'
 import type { Team, TeamMember, DpRole } from '@/types'
 
 interface TeamState {
@@ -237,7 +239,27 @@ export const useTeamStore = create<TeamState>((set, get) => ({
         .eq('team_id', team.id)
         .eq('user_id', session.user.id)
 
+      // Clear ALL local data for this team — security: no stale data after leaving
       localStorage.removeItem('dp_team')
+      localStorage.removeItem(`dp_members_${team.id}`)
+      localStorage.removeItem(`dp_categories_${team.id}`)
+      localStorage.removeItem(`dp_duties_${team.id}`)
+      localStorage.removeItem('dp_setup_complete')
+
+      // Stop realtime subscriptions
+      unsubscribeFromDutySync()
+
+      // Clear duty store (calendar data)
+      useDutyStore.setState({
+        members: [], categories: [], duties: [],
+        teamId: null, undoStack: [], redoStack: [],
+        canUndo: false, canRedo: false,
+      })
+
+      // Clear swap store
+      useSwapStore.setState({ swaps: [] })
+
+      // Clear team store
       set({ team: null, members: [], roles: [] })
     } catch (e) {
       console.error('Failed to leave team:', e)
