@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useUiStore } from '@/stores/uiStore'
 import { useI18n } from '@/i18n'
 import { useDutyStore } from '@/stores/dutyStore'
@@ -8,6 +8,18 @@ import { ChevronLeft, ChevronRight, Paintbrush, Undo2, Redo2 } from 'lucide-reac
 import ExportMenu from './ExportMenu'
 import ImportMenu from './ImportMenu'
 import type { CalendarView } from '@/types'
+
+function useIsMobile(breakpoint = 640) {
+  const [mobile, setMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < breakpoint)
+  useEffect(() => {
+    const mql = window.matchMedia(`(max-width: ${breakpoint - 1}px)`)
+    const handler = (e: MediaQueryListEvent) => setMobile(e.matches)
+    setMobile(mql.matches)
+    mql.addEventListener('change', handler)
+    return () => mql.removeEventListener('change', handler)
+  }, [breakpoint])
+  return mobile
+}
 
 export default function CalendarNav() {
   const { t, tArray } = useI18n()
@@ -48,8 +60,8 @@ export default function CalendarNav() {
     }
   }
 
-  const [legendOpen, setLegendOpen] = useState(true)
-  const isMobile = typeof window !== 'undefined' && window.innerWidth < 640
+  const [legendOpen, setLegendOpen] = useState(false)
+  const isMobile = useIsMobile()
 
   return (
     <div className="space-y-3 mb-4">

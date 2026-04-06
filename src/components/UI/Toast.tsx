@@ -24,7 +24,7 @@ export default function ToastContainer() {
   if (toasts.length === 0) return null
 
   return (
-    <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2" style={{ maxWidth: '360px' }}>
+    <div className="fixed right-4 z-50 flex flex-col gap-2 bottom-20 md:bottom-4" style={{ maxWidth: '360px' }}>
       {toasts.map((toast) => {
         const Icon = icons[toast.type]
         return (

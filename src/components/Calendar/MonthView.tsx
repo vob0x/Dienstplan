@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useMemo, useCallback, useEffect } from 'react'
 import { useUiStore } from '@/stores/uiStore'
 import { useDutyStore } from '@/stores/dutyStore'
 import { useI18n } from '@/i18n'
@@ -8,6 +8,18 @@ import { daysInMonth, toDateStr } from '@/lib/utils'
 import CalendarNav from './CalendarNav'
 import DutyPicker from './DutyPicker'
 import { AlertTriangle, Search, X } from 'lucide-react'
+
+function useIsMobile(breakpoint = 640) {
+  const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < breakpoint)
+  useEffect(() => {
+    const mql = window.matchMedia(`(max-width: ${breakpoint - 1}px)`)
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches)
+    setIsMobile(mql.matches)
+    mql.addEventListener('change', handler)
+    return () => mql.removeEventListener('change', handler)
+  }, [breakpoint])
+  return isMobile
+}
 
 export default function MonthView() {
   const { t, tArray, language } = useI18n()
@@ -21,9 +33,12 @@ export default function MonthView() {
   const selectedMember = members.find((m) => m.id === picker?.memberId)
   const duties = useDutyStore((s) => s.duties)
 
+  const isMobile = useIsMobile()
   const dayNames = tArray('days') // ['Mo','Di','Mi','Do','Fr','Sa','So'] index 0=Mo
   const holidays = useMemo(() => getHolidays(year), [year])
   const todayStr = useMemo(() => toDateStr(new Date()), [])
+  // Memoized category lookup for O(1) access in cell rendering
+  const catMap = useMemo(() => new Map(categories.map((c) => [c.id, c])), [categories])
 
   // Build date array for the month
   const dates = useMemo(() => {
@@ -144,12 +159,18 @@ export default function MonthView() {
 
           {/* Calendar table */}
           <div className="overflow-x-auto rounded-xl" style={{ border: '1px solid var(--border)', WebkitOverflowScrolling: 'touch' }}>
-            <table className="border-collapse" style={{ minWidth: '600px', width: '100%', tableLayout: 'auto' }}>
+            <table className="border-collapse" style={{ minWidth: isMobile ? '100%' : '600px', width: '100%', tableLayout: isMobile ? 'fixed' : 'auto' }}>
               <thead>
                 <tr>
                   <th className="sticky left-0 z-10 px-2 py-1 text-left text-xs font-semibold"
-                    style={{ background: 'var(--surface-solid)', color: 'var(--text-secondary)', borderBottom: '1px solid var(--border)', width: '140px' }}>
-                    {t('members.title')}
+                    style={{
+                      background: 'var(--surface-solid)',
+                      color: 'var(--text-secondary)',
+                      borderBottom: '1px solid var(--border)',
+                      width: isMobile ? '72px' : '140px',
+                      minWidth: isMobile ? '72px' : '140px',
+                    }}>
+                    {isMobile ? '' : t('members.title')}
                   </th>
                 {dates.map(({ date, dateStr, dayOfWeek }) => {
                   const holiday = isHoliday(dateStr, holidays)
@@ -158,19 +179,21 @@ export default function MonthView() {
                   return (
                     <th
                       key={dateStr}
-                      className="px-0.5 py-1 text-center"
+                      className="px-0 py-1 text-center"
                       style={{
                         background: isToday ? 'var(--surface-active)' : weekend ? 'var(--weekend-bg)' : 'var(--surface-solid)',
                         borderBottom: '1px solid var(--border)',
                         color: isToday ? 'var(--neon-cyan)' : holiday ? 'var(--neon-red)' : weekend ? 'var(--text-muted)' : 'var(--text-secondary)',
-                        minWidth: '30px',
+                        minWidth: isMobile ? undefined : '30px',
                       }}
                       title={holiday ? (language === 'fr' ? holiday.name_fr : holiday.name) : undefined}
                     >
-                      <div className="font-semibold" style={{ fontFamily: 'var(--font-display)', fontSize: '0.6rem' }}>
-                        {dayNames[dayOfWeek === 0 ? 6 : dayOfWeek - 1] || ''}
-                      </div>
-                      <div className="font-bold" style={{ fontSize: '0.75rem', lineHeight: 1.1 }}>{date.getDate()}</div>
+                      {!isMobile && (
+                        <div className="font-semibold" style={{ fontFamily: 'var(--font-display)', fontSize: '0.6rem' }}>
+                          {dayNames[dayOfWeek === 0 ? 6 : dayOfWeek - 1] || ''}
+                        </div>
+                      )}
+                      <div className="font-bold" style={{ fontSize: isMobile ? '0.6rem' : '0.75rem', lineHeight: 1.1 }}>{date.getDate()}</div>
                       {holiday && <div className="w-1 h-1 rounded-full mx-auto mt-px" style={{ background: 'var(--neon-red)' }} />}
                     </th>
                   )
@@ -181,16 +204,17 @@ export default function MonthView() {
               {members
                 .filter((m) => m.is_active && m.name.toLowerCase().includes(memberSearch.toLowerCase()))
                 .map((member) => (
-                <tr key={member.id} style={{ height: '28px' }}>
-                  <td className="sticky left-0 z-10 px-2 text-xs font-medium truncate"
+                <tr key={member.id} style={{ height: isMobile ? '32px' : '28px' }}>
+                  <td className="sticky left-0 z-10 px-1.5 text-xs font-medium truncate"
                     style={{
                       background: 'var(--surface-solid)',
                       color: 'var(--text)',
                       borderBottom: '1px solid var(--border-light)',
-                      width: '140px',
-                      maxWidth: '160px',
-                      height: '28px',
-                      lineHeight: '28px',
+                      width: isMobile ? '72px' : '140px',
+                      maxWidth: isMobile ? '72px' : '160px',
+                      height: isMobile ? '32px' : '28px',
+                      lineHeight: isMobile ? '32px' : '28px',
+                      fontSize: isMobile ? '0.65rem' : undefined,
                     }}>
                     {member.name}
                   </td>
@@ -200,6 +224,7 @@ export default function MonthView() {
                     const isToday = dateStr === todayStr
                     const hasPending = allDuties.some((d) => d.approval_status === 'pending')
                     const editable = canEditDuty(member.id)
+                    const firstCat = allDuties.length > 0 ? catMap.get(allDuties[0].category_id) : null
 
                     return (
                       <td
@@ -209,23 +234,43 @@ export default function MonthView() {
                         style={{
                           borderBottom: '1px solid var(--border-light)',
                           cursor: editable ? 'pointer' : 'default',
-                          padding: '1px 2px',
-                          height: '28px',
+                          padding: isMobile ? '1px' : '1px 2px',
+                          height: isMobile ? '32px' : '28px',
                           textAlign: 'center',
                           verticalAlign: 'middle',
-                          background: allDuties.length > 0 ? `${categories.find((c) => c.id === allDuties[0]?.category_id)?.color || 'transparent'}22` : 'transparent',
-                          borderLeft: allDuties.length > 0 ? `3px solid ${categories.find((c) => c.id === allDuties[0]?.category_id)?.color || 'transparent'}` : undefined,
+                          background: firstCat ? `${firstCat.color}22` : 'transparent',
+                          borderLeft: firstCat ? `3px solid ${firstCat.color}` : undefined,
                         }}
-                        title={allDuties.map((d) => categories.find((c) => c.id === d.category_id)?.name || '').join(', ')}
+                        title={allDuties.map((d) => catMap.get(d.category_id)?.name || '').join(', ')}
                       >
-                        {allDuties.map((duty) => {
-                          const cat = categories.find((c) => c.id === duty.category_id)
-                          return cat ? (
-                            <span key={duty.id} style={{ fontSize: '0.65rem', fontWeight: 700, fontFamily: 'var(--font-mono)', color: cat.color, marginRight: '1px' }}>
-                              {cat.letter}
+                        {isMobile ? (
+                          // Mobile: colored pill with letter, larger touch target
+                          allDuties.length > 0 && firstCat && (
+                            <span style={{
+                              display: 'inline-block',
+                              background: `${firstCat.color}33`,
+                              color: firstCat.color,
+                              borderRadius: '4px',
+                              padding: '1px 3px',
+                              fontSize: '0.6rem',
+                              fontWeight: 800,
+                              fontFamily: 'var(--font-mono)',
+                              lineHeight: 1.4,
+                            }}>
+                              {allDuties.map((d) => catMap.get(d.category_id)?.letter || '').join('')}
                             </span>
-                          ) : null
-                        })}
+                          )
+                        ) : (
+                          // Desktop: letter codes
+                          allDuties.map((duty) => {
+                            const cat = catMap.get(duty.category_id)
+                            return cat ? (
+                              <span key={duty.id} style={{ fontSize: '0.65rem', fontWeight: 700, fontFamily: 'var(--font-mono)', color: cat.color, marginRight: '1px' }}>
+                                {cat.letter}
+                              </span>
+                            ) : null
+                          })
+                        )}
                       </td>
                     )
                   })}

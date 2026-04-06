@@ -258,8 +258,16 @@ button:active:not(:disabled) {
 /* Mobile calendar optimization */
 @media (max-width: 640px) {
   .duty-cell {
-    height: 28px;
+    height: 32px;
     font-size: 11px;
+    min-width: 0;
+  }
+}
+
+/* Prevent toasts from hiding behind mobile bottom nav */
+@media (max-width: 768px) {
+  .toast-container-mobile {
+    bottom: calc(4rem + env(safe-area-inset-bottom)) !important;
   }
 }
 
