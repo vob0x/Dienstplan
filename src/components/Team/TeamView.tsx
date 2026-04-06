@@ -66,10 +66,15 @@ export default function TeamView() {
     addToast({ type: 'info', message: t('team.leftSuccess') })
   }
 
-  const copyCode = () => {
+  const copyCode = async () => {
     if (team?.invite_code) {
-      navigator.clipboard.writeText(team.invite_code)
-      addToast({ type: 'success', message: t('team.codeCopied') })
+      try {
+        await navigator.clipboard.writeText(team.invite_code)
+        addToast({ type: 'success', message: t('team.codeCopied') })
+      } catch {
+        // Fallback for browsers that deny clipboard access
+        addToast({ type: 'info', message: `Code: ${team.invite_code}` })
+      }
     }
   }
 

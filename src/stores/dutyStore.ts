@@ -396,15 +396,17 @@ export const useDutyStore = create<DutyState>((set, get) => ({
     if (undoStack.length === 0) return
     const action = undoStack[undoStack.length - 1]
     const newUndo = undoStack.slice(0, -1)
-    const newRedo = [...get().redoStack, action]
+    const newRedo = [...get().redoStack.slice(-19), action] // Cap redo stack too
 
     let newDuties = duties
     if (action.type === 'set_duty' && action.previousData) {
+      // Restore previous state of duty
       const prev = action.previousData as DpDuty
-      newDuties = duties.map((d) => d.member_id === prev.member_id && d.date === prev.date ? prev : d)
+      newDuties = duties.map((d) => d.id === prev.id ? prev : d)
     } else if (action.type === 'set_duty' && !action.previousData) {
+      // Remove the newly added duty by its ID (not member+date, which could hit wrong duty)
       const duty = action.data as DpDuty
-      newDuties = duties.filter((d) => !(d.member_id === duty.member_id && d.date === duty.date))
+      newDuties = duties.filter((d) => d.id !== duty.id)
     } else if (action.type === 'delete_duty') {
       const duty = action.previousData as DpDuty
       newDuties = [...duties, duty]
@@ -502,22 +504,24 @@ export const useDutyStore = create<DutyState>((set, get) => ({
     if (redoStack.length === 0) return
     const action = redoStack[redoStack.length - 1]
     const newRedo = redoStack.slice(0, -1)
-    const newUndo = [...get().undoStack, action]
+    const newUndo = [...get().undoStack.slice(-19), action]
 
     let newDuties = duties
     if (action.type === 'set_duty') {
+      // Restore the full duty object as it was created
       const duty = action.data as DpDuty
-      const existing = duties.find((d) => d.member_id === duty.member_id && d.date === duty.date)
+      const existing = duties.find((d) => d.id === duty.id)
       if (existing) {
-        newDuties = duties.map((d) => d.member_id === duty.member_id && d.date === duty.date ? { ...d, category_id: duty.category_id, note: duty.note } : d)
+        // Restore full duty (not just category + note)
+        newDuties = duties.map((d) => d.id === duty.id ? duty : d)
       } else {
-        // Re-create duty with a proper ID
-        const newDuty: DpDuty = { ...duty, id: duty.id || generateId(), team_id: get().teamId || '', created_at: new Date().toISOString(), updated_at: new Date().toISOString(), approval_status: 'none', created_by: null }
-        newDuties = [...duties, newDuty]
+        // Re-add the duty with its original ID and all fields
+        newDuties = [...duties, duty]
       }
     } else if (action.type === 'delete_duty') {
+      // Remove by ID for precision
       const duty = action.data as DpDuty
-      newDuties = duties.filter((d) => !(d.member_id === duty.member_id && d.date === duty.date))
+      newDuties = duties.filter((d) => d.id !== duty.id)
     }
 
     set({ duties: newDuties, undoStack: newUndo, redoStack: newRedo, canUndo: newUndo.length > 0, canRedo: newRedo.length > 0 })
@@ -536,8 +540,8 @@ export const useDutyStore = create<DutyState>((set, get) => ({
 // Realtime Subscriptions + Visibility Re-Fetch
 // ============================================================================
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let dutiesChannel: any = null
+import type { RealtimeChannel } from '@supabase/supabase-js'
+let dutiesChannel: RealtimeChannel | null = null
 let visibilityHandler: (() => void) | null = null
 let pollingInterval: ReturnType<typeof setInterval> | null = null
 let isUnsubscribing = false          // Guard: true while we intentionally remove channel
@@ -683,6 +687,13 @@ export function subscribeToDutySync() {
       if (document.visibilityState === 'visible') {
         const currentTeamId = useDutyStore.getState().teamId
         if (currentTeamId) {
+          // Check session before re-fetching — avoids spamming 401s
+          const { ensureValidSession } = await import('@/lib/supabase')
+          const valid = await ensureValidSession()
+          if (!valid) {
+            console.warn('[Visibility] Skipping — no valid session')
+            return
+          }
           console.log('[Visibility] Tab active — re-fetching data + team sync')
           const { useTeamStore } = await import('@/stores/teamStore')
           await useTeamStore.getState().fetchTeamData()
@@ -701,17 +712,28 @@ export function subscribeToDutySync() {
   startPolling(teamId)
 }
 
-function startPolling(teamId: string) {
+function startPolling(_teamId: string) {
   if (pollingInterval) clearInterval(pollingInterval)
   pollingInterval = setInterval(async () => {
     if (document.visibilityState === 'visible') {
+      // Always use current teamId from store (not the captured one) to avoid stale polling
+      const currentTeamId = useDutyStore.getState().teamId
+      if (!currentTeamId) return
+
+      // Check session before polling — avoids spamming 401s
+      const { ensureValidSession } = await import('@/lib/supabase')
+      const valid = await ensureValidSession()
+      if (!valid) {
+        console.warn('[Polling] Skipping — no valid session')
+        return
+      }
       const { useTeamStore } = await import('@/stores/teamStore')
       await useTeamStore.getState().fetchTeamData()
-      await useDutyStore.getState().fetchAll(teamId)
+      await useDutyStore.getState().fetchAll(currentTeamId)
       const { syncTeamMembersToDpMembers } = await import('@/lib/syncTeamMembers')
       await syncTeamMembersToDpMembers()
       const { useSwapStore } = await import('@/stores/swapStore')
-      await useSwapStore.getState().fetchSwaps(teamId)
+      await useSwapStore.getState().fetchSwaps(currentTeamId)
     }
   }, 30000) // 30 seconds
 }

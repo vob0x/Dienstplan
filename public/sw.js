@@ -85,12 +85,15 @@ self.addEventListener('fetch', (event) => {
   }
 
   // HTML/navigation: network-first with cache fallback
+  // Only cache successful responses (not 404/50x error pages)
   if (event.request.mode === 'navigate' || event.request.headers.get('accept')?.includes('text/html')) {
     event.respondWith(
       fetch(event.request)
         .then((response) => {
-          const clone = response.clone()
-          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone))
+          if (response.ok) {
+            const clone = response.clone()
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone))
+          }
           return response
         })
         .catch(() => caches.match(event.request).then((cached) => cached || caches.match('./index.html')))

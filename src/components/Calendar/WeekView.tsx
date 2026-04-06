@@ -11,7 +11,7 @@ import DutyPicker from './DutyPicker'
 export default function WeekView() {
   const { t, tArray, language } = useI18n()
   const { weekStart, paintMode, paintCategoryId } = useUiStore()
-  const { members, categories, getDuties, setDuty } = useDutyStore()
+  const { members, categories, getDuties, setDuty, removeDuty } = useDutyStore()
   const { canEditDuty, canUsePaintMode } = usePermissions()
   const [picker, setPicker] = useState<{ memberId: string; date: string } | null>(null)
   const selectedMember = members.find((m) => m.id === picker?.memberId)
@@ -40,11 +40,18 @@ export default function WeekView() {
   const handleCellClick = useCallback((memberId: string, dateStr: string) => {
     if (!canEditDuty(memberId)) return
     if (paintMode && paintCategoryId && canUsePaintMode) {
-      setDuty(memberId, dateStr, paintCategoryId)
+      // Toggle: if duty with this category exists, remove it; otherwise set it
+      const existing = getDuties(memberId, dateStr)
+      const hasSameCat = existing.some((d) => d.category_id === paintCategoryId)
+      if (hasSameCat) {
+        removeDuty(memberId, dateStr, paintCategoryId)
+      } else {
+        setDuty(memberId, dateStr, paintCategoryId)
+      }
     } else {
       setPicker({ memberId, date: dateStr })
     }
-  }, [paintMode, paintCategoryId, setDuty, canEditDuty, canUsePaintMode])
+  }, [paintMode, paintCategoryId, setDuty, removeDuty, getDuties, canEditDuty, canUsePaintMode])
 
   return (
     <div>

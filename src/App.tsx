@@ -5,15 +5,13 @@ import { useDutyStore, subscribeToDutySync, unsubscribeFromDutySync } from '@/st
 import { useTeamStore } from '@/stores/teamStore'
 import { useSwapStore } from '@/stores/swapStore'
 import { syncTeamMembersToDpMembers } from '@/lib/syncTeamMembers'
-import { initSwapNotifications } from '@/lib/notifications'
+import { initSwapNotifications, resetSwapNotifications } from '@/lib/notifications'
 import { I18nProvider, useI18n } from '@/i18n'
-import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
 import Layout from '@/components/Layout'
 import LoginScreen from '@/components/Auth/LoginScreen'
 
 function AppContent() {
   const { t } = useI18n()
-  useKeyboardShortcuts()
   const { isAuthenticated, loading, initializeAuth } = useAuthStore()
   const { theme } = useUiStore()
   const fetchTeamData = useTeamStore((s) => s.fetchTeamData)
@@ -39,7 +37,7 @@ function AppContent() {
         }
       })
     }
-    return () => { unsubscribeFromDutySync() }
+    return () => { unsubscribeFromDutySync(); resetSwapNotifications() }
   }, [isAuthenticated, fetchTeamData, fetchAll])
 
   // Refetch when team changes

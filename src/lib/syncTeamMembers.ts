@@ -4,8 +4,16 @@
  */
 import { useTeamStore } from '@/stores/teamStore'
 import { useDutyStore } from '@/stores/dutyStore'
+import { ensureValidSession } from '@/lib/supabase'
 
 export async function syncTeamMembersToDpMembers(): Promise<number> {
+  // Validate session first — avoids spamming 401s for each member
+  const sessionValid = await ensureValidSession()
+  if (!sessionValid) {
+    console.warn('[Sync] Skipping team sync — no valid session')
+    return 0
+  }
+
   const teamMembers = useTeamStore.getState().members
   const dpMembers = useDutyStore.getState().members
   let synced = 0

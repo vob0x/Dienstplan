@@ -88,6 +88,11 @@ export function initSwapNotifications() {
   previousSwapMap = new Map(swaps.map((s) => [s.id, s]))
 }
 
+/** Reset notification state (call on logout or team switch to avoid phantom notifications) */
+export function resetSwapNotifications() {
+  previousSwapMap = new Map()
+}
+
 export function processSwapChanges() {
   const swaps = useSwapStore.getState().swaps
   const profile = useAuthStore.getState().profile
@@ -199,5 +204,9 @@ export function processSwapChanges() {
 // ---------------------------------------------------------------------------
 function formatDateShort(dateStr: string): string {
   const d = new Date(dateStr + 'T00:00:00')
+  const lang = useUiStore.getState().language
+  if (lang === 'fr') {
+    return `${d.getDate()}/${d.getMonth() + 1}`
+  }
   return `${d.getDate()}.${d.getMonth() + 1}.`
 }

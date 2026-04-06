@@ -152,7 +152,7 @@ export const useSwapStore = create<SwapState>((set, get) => ({
       swaps: s.swaps.map((sw) => sw.id === swapId ? {
         ...sw,
         status: newStatus,
-        responder_note: note ?? sw.responder_note,
+        responder_note: note !== undefined ? note : sw.responder_note,
         accepted_at: accept ? now : sw.accepted_at,
         updated_at: now,
       } : sw),
@@ -184,7 +184,7 @@ export const useSwapStore = create<SwapState>((set, get) => ({
       swaps: s.swaps.map((sw) => sw.id === swapId ? {
         ...sw,
         status: newStatus,
-        admin_note: note ?? sw.admin_note,
+        admin_note: note !== undefined ? note : sw.admin_note,
         approved_by: adminUserId,
         approved_at: now,
         updated_at: now,
@@ -256,24 +256,33 @@ async function executeSwapDuties(swap: DpShiftSwap) {
   const ds = useDutyStore.getState()
   const { requester_member_id: reqId, target_member_id: tgtId, target_date: date } = swap
 
-  if (swap.swap_type === 'reassignment') {
-    // One-way: move requester's specific duty to target
-    if (swap.requester_category_id) {
-      await ds.removeDuty(reqId, date, swap.requester_category_id)
-      await ds.setDuty(tgtId, date, swap.requester_category_id)
+  try {
+    if (swap.swap_type === 'reassignment') {
+      // One-way: move requester's specific duty to target
+      if (swap.requester_category_id) {
+        await ds.removeDuty(reqId, date, swap.requester_category_id)
+        await ds.setDuty(tgtId, date, swap.requester_category_id)
+      }
+      return
     }
-    return
+
+    // Two-way swap: exchange specific categories between members
+    const reqCatId = swap.requester_category_id
+    const tgtCatId = swap.target_category_id
+
+    // Remove the swapped duties first
+    if (reqCatId) await ds.removeDuty(reqId, date, reqCatId)
+    if (tgtCatId) await ds.removeDuty(tgtId, date, tgtCatId)
+
+    // Re-assign swapped
+    if (reqCatId) await ds.setDuty(tgtId, date, reqCatId)
+    if (tgtCatId) await ds.setDuty(reqId, date, tgtCatId)
+  } catch (e) {
+    console.error('[Swap] executeSwapDuties failed — calendar may be inconsistent. Refreshing…', e)
+    // Re-fetch all data to restore consistent state
+    const teamId = swap.team_id
+    if (teamId) {
+      await ds.fetchAll(teamId)
+    }
   }
-
-  // Two-way swap: exchange specific categories between members
-  const reqCatId = swap.requester_category_id
-  const tgtCatId = swap.target_category_id
-
-  // Remove the swapped duties
-  if (reqCatId) await ds.removeDuty(reqId, date, reqCatId)
-  if (tgtCatId) await ds.removeDuty(tgtId, date, tgtCatId)
-
-  // Re-assign swapped
-  if (reqCatId) await ds.setDuty(tgtId, date, reqCatId)
-  if (tgtCatId) await ds.setDuty(reqId, date, tgtCatId)
 }
