@@ -37,18 +37,15 @@ export default function DashboardView() {
     return getDuties(myMember.id, todayStr)
   }, [myMember, todayStr, getDuties])
 
-  // Upcoming duties (next 7 days)
-  const upcomingDuties = useMemo(() => {
-    if (!myMember) return []
+  // Upcoming 7 calendar days (always show all 7, even without duties)
+  const upcomingDays = useMemo(() => {
     const result: Array<{ date: string; dateObj: Date; duties: ReturnType<typeof getDuties> }> = []
     for (let i = 1; i <= 7; i++) {
       const d = new Date(today)
       d.setDate(d.getDate() + i)
       const dateStr = toDateStr(d)
-      const duties = getDuties(myMember.id, dateStr)
-      if (duties.length > 0) {
-        result.push({ date: dateStr, dateObj: d, duties })
-      }
+      const duties = myMember ? getDuties(myMember.id, dateStr) : []
+      result.push({ date: dateStr, dateObj: d, duties })
     }
     return result
   }, [myMember, today, getDuties])
@@ -178,44 +175,41 @@ export default function DashboardView() {
           <Calendar size={16} style={{ color: 'var(--neon-cyan)' }} />
           {t('dashboard.nextDays')}
         </h2>
-        {upcomingDuties.length === 0 ? (
-          <p className="text-sm py-4 text-center" style={{ color: 'var(--text-muted)' }}>
-            {t('dashboard.noUpcoming')}
-          </p>
-        ) : (
-          <div className="space-y-2">
-            {upcomingDuties.map(({ date, dateObj, duties }) => {
-              const holiday = isHoliday(date, holidays)
-              const weekend = isWeekend(dateObj)
-              return (
-                <div key={date} className="flex items-center gap-3 px-3 py-2.5 rounded-xl"
-                  style={{ background: 'var(--surface-hover)' }}>
-                  <div className="w-12 text-center flex-shrink-0">
-                    <div className="text-[10px] font-medium"
-                      style={{ color: weekend ? 'var(--text-muted)' : holiday ? 'var(--neon-red)' : 'var(--text-secondary)' }}>
-                      {formatDayName(dateObj).slice(0, 2)}
-                    </div>
-                    <div className="text-lg font-bold leading-tight" style={{ color: 'var(--text)' }}>
-                      {dateObj.getDate()}
-                    </div>
+        <div className="space-y-1.5">
+          {upcomingDays.map(({ date, dateObj, duties }) => {
+            const holiday = isHoliday(date, holidays)
+            const weekend = isWeekend(dateObj)
+            const hasDuties = duties.length > 0
+            return (
+              <div key={date} className="flex items-center gap-3 px-3 py-2 rounded-xl"
+                style={{ background: hasDuties ? 'var(--surface-hover)' : 'transparent', opacity: hasDuties ? 1 : 0.6 }}>
+                <div className="w-12 text-center flex-shrink-0">
+                  <div className="text-[10px] font-medium"
+                    style={{ color: weekend ? 'var(--text-muted)' : holiday ? 'var(--neon-red)' : 'var(--text-secondary)' }}>
+                    {formatDayName(dateObj).slice(0, 2)}
                   </div>
-                  <div className="flex flex-wrap gap-1.5 flex-1">
-                    {duties.map((duty) => {
-                      const cat = catMap.get(duty.category_id)
-                      if (!cat) return null
-                      return (
-                        <span key={duty.id} className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-bold"
-                          style={{ background: `${cat.color}20`, color: cat.color }}>
-                          {cat.letter} {cat.name}
-                        </span>
-                      )
-                    })}
+                  <div className="text-lg font-bold leading-tight" style={{ color: 'var(--text)' }}>
+                    {dateObj.getDate()}
                   </div>
                 </div>
-              )
-            })}
-          </div>
-        )}
+                <div className="flex flex-wrap gap-1.5 flex-1">
+                  {hasDuties ? duties.map((duty) => {
+                    const cat = catMap.get(duty.category_id)
+                    if (!cat) return null
+                    return (
+                      <span key={duty.id} className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-bold"
+                        style={{ background: `${cat.color}20`, color: cat.color }}>
+                        {cat.letter} {cat.name}
+                      </span>
+                    )
+                  }) : (
+                    <span className="text-xs" style={{ color: 'var(--text-muted)' }}>—</span>
+                  )}
+                </div>
+              </div>
+            )
+          })}
+        </div>
       </section>
 
       {/* Quick actions */}

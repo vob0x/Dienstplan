@@ -46,6 +46,9 @@ function normalizeLine(raw: string): string {
     .replace(/^[\s\-•*◦▪▸►→#]+/, '')            // Leading bullets, dashes, arrows, #
     .replace(/^\d+[.)]\s+/, '')                  // Numbered lists: "1. " or "1) "
     .replace(/[:]\s*/g, ' ')                     // Colons → space (Ferien: 3.1 → Ferien 3.1)
+    .replace(/\s*\(.*?\)\s*/g, ' ')             // Remove parenthetical remarks: "(ganzer Tag)"
+    .replace(/[„""«»]/g, '')                    // Remove quote marks
+    .replace(/ {2,}/g, ' ')                      // Collapse spaces again after removals
     .trim()
   return s
 }
@@ -169,15 +172,24 @@ function matchCategory(text: string, categories: DpCategory[]): DpCategory | nul
   )
   if (contains) return contains
 
-  // 5) Levenshtein distance for typo tolerance (e.g., "Fereien" → "Ferien")
+  // 5) Levenshtein distance for typo tolerance (e.g., "Fereien" → "Ferien", "Pikket" → "Pikett")
   let bestCat: DpCategory | null = null
   let bestDist = Infinity
   for (const c of categories) {
-    const dist = levenshtein(lower, c.name.toLowerCase())
-    const threshold = Math.max(1, Math.floor(c.name.length * 0.35)) // allow ~35% errors
-    if (dist <= threshold && dist < bestDist) {
-      bestDist = dist
+    // Check against full name
+    const distName = levenshtein(lower, c.name.toLowerCase())
+    const thresholdName = Math.max(1, Math.floor(c.name.length * 0.4)) // allow ~40% errors
+    if (distName <= thresholdName && distName < bestDist) {
+      bestDist = distName
       bestCat = c
+    }
+    // Also check against letter code (for typos like "PK" → "P")
+    if (lower.length <= 3 && c.letter.length <= 2) {
+      const distLetter = levenshtein(lower, c.letter.toLowerCase())
+      if (distLetter <= 1 && distLetter < bestDist) {
+        bestDist = distLetter
+        bestCat = c
+      }
     }
   }
   if (bestCat) return bestCat
@@ -266,7 +278,20 @@ function detectCategoryInLine(line: string, categories: DpCategory[]): { categor
     }
   }
 
-  // --- Strategy 3: Category at END of line: "3.1-10.1 Ferien" ---
+  // --- Strategy 3: Category name glued to a digit: "Pikett3.1" or "Ferien3.1-10.1" ---
+  for (const cat of sorted) {
+    const catLower = cat.name.toLowerCase()
+    if (lower.startsWith(catLower) && line.length > cat.name.length) {
+      const afterCat = line.slice(cat.name.length)
+      // Category followed directly by a digit (no space/separator)
+      if (/^\d/.test(afterCat)) {
+        const rest = afterCat.trim()
+        if (rest.length > 0) return { category: cat, rest }
+      }
+    }
+  }
+
+  // --- Strategy 4: Category at END of line: "3.1-10.1 Ferien" ---
   // Find the last word(s) and check if they match a category
   const words = line.split(/\s+/)
   if (words.length >= 2) {
@@ -302,7 +327,10 @@ function detectCategoryInLine(line: string, categories: DpCategory[]): { categor
 function splitDateRange(text: string): { startStr: string; endStr: string } | null {
   let cleaned = text
     .replace(/^(vom|ab|von|du|from|depuis|de)\s+/i, '')  // "vom 3.1" → "3.1"
-    .replace(/\s+(an|bis zum|bis|to|until|jusqu'au|au)\s+/g, ' BIS ') // normalize separator
+    // Normalize all separator variants to " BIS " (case-insensitive, including typos)
+    .replace(/\s+(an|bis\s+zum|bis|bsi|to|until|jusqu'au|au)\s+/gi, ' BIS ')
+    // Also handle "bis" directly glued to digits: "3.1bis10.1" or "3.1Bis10.1"
+    .replace(/(\d)\.?\s*(?:bis|bsi)\s*(\d)/gi, '$1 BIS $2')
     .trim()
 
   // Try "BIS" separator first (from normalization above)
@@ -351,7 +379,7 @@ function parseDayRangeWithMonth(text: string, currentYear: number): { start: Dat
 
   // "3.-10. Januar 2026" or "3. - 10. Januar" or "3-10 Januar" or "3 bis 10 Januar 2026"
   const m = s.match(
-    /^(\d{1,2})\.?\s*(?:-|–|—|bis)\s*(\d{1,2})\.?\s+([a-zäöüéèàâ]+)\.?(?:\s+(\d{2,4}))?$/i
+    /^(\d{1,2})\.?\s*(?:-|–|—|bis|bsi)\s*(\d{1,2})\.?\s+([a-zäöüéèàâ]+)\.?(?:\s+(\d{2,4}))?$/i
   )
   if (m) {
     const day1 = parseInt(m[1], 10)
@@ -368,7 +396,7 @@ function parseDayRangeWithMonth(text: string, currentYear: number): { start: Dat
 
   // "3.-10.1." or "3.-10.1.26" or "3-10.1"  (day range with numeric month)
   const n = s.match(
-    /^(\d{1,2})\.?\s*(?:-|–|—|bis)\s*(\d{1,2})\.(\d{1,2})\.?(\d{2,4})?$/
+    /^(\d{1,2})\.?\s*(?:-|–|—|bis|bsi)\s*(\d{1,2})\.(\d{1,2})\.?(\d{2,4})?$/i
   )
   if (n) {
     const day1 = parseInt(n[1], 10)
@@ -400,7 +428,7 @@ export function parseSmartImport(text: string, categories: DpCategory[]): Parsed
   const lines: string[] = []
   for (const rawLine of rawLines) {
     // Don't split by comma if the line contains a date range (would break "3,000" edge case too)
-    if (/\d\s*[-–—]\s*\d|\bbis\b/i.test(rawLine)) {
+    if (/\d\s*[-–—]\s*\d|\b(?:bis|bsi|to|until)\b/i.test(rawLine)) {
       lines.push(rawLine)
     } else {
       // Split by comma, but only if both parts look meaningful

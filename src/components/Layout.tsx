@@ -126,18 +126,19 @@ export default function Layout() {
   const [moreMenuOpen, setMoreMenuOpen] = useState(false)
   const [showSetup, setShowSetup] = useState(false)
   const isMobile = useIsMobile()
+  const { canAccessView, isPlanner } = usePermissions()
 
   const fetchTeamData = useTeamStore((s) => s.fetchTeamData)
 
-  // Check if setup wizard should show
+  // Check if setup wizard should show (only for admin/planner — members joining a team skip it)
   useEffect(() => {
-    if (team && members.length === 0 && categories.length === 0) {
+    if (team && members.length === 0 && categories.length === 0 && isPlanner) {
       const setupDone = localStorage.getItem('dp_setup_complete')
       if (!setupDone) {
         setShowSetup(true)
       }
     }
-  }, [team, members.length, categories.length])
+  }, [team, members.length, categories.length, isPlanner])
 
   const handleRefresh = async () => {
     if (!team || refreshing) return
@@ -153,8 +154,6 @@ export default function Layout() {
   }
 
   useKeyboardShortcuts(true)
-
-  const { canAccessView, isPlanner } = usePermissions()
 
   // Swap badge count
   const swaps = useSwapStore((s) => s.swaps)
