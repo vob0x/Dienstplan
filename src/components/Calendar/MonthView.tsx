@@ -159,7 +159,7 @@ export default function MonthView() {
 
           {/* Calendar table */}
           <div className="overflow-x-auto rounded-xl" style={{ border: '1px solid var(--border)', WebkitOverflowScrolling: 'touch' }}>
-            <table className="border-collapse" style={{ minWidth: isMobile ? '100%' : '600px', width: '100%', tableLayout: isMobile ? 'fixed' : 'auto' }}>
+            <table className="border-collapse" style={{ minWidth: isMobile ? `${dates.length * 28 + 80}px` : '600px', width: isMobile ? undefined : '100%', tableLayout: 'auto' }}>
               <thead>
                 <tr>
                   <th className="sticky left-0 z-10 px-2 py-1 text-left text-xs font-semibold"
@@ -167,8 +167,8 @@ export default function MonthView() {
                       background: 'var(--surface-solid)',
                       color: 'var(--text-secondary)',
                       borderBottom: '1px solid var(--border)',
-                      width: isMobile ? '72px' : '140px',
-                      minWidth: isMobile ? '72px' : '140px',
+                      width: isMobile ? '80px' : '140px',
+                      minWidth: isMobile ? '80px' : '140px',
                     }}>
                     {isMobile ? '' : t('members.title')}
                   </th>
@@ -184,7 +184,7 @@ export default function MonthView() {
                         background: isToday ? 'var(--surface-active)' : weekend ? 'var(--weekend-bg)' : 'var(--surface-solid)',
                         borderBottom: '1px solid var(--border)',
                         color: isToday ? 'var(--neon-cyan)' : holiday ? 'var(--neon-red)' : weekend ? 'var(--text-muted)' : 'var(--text-secondary)',
-                        minWidth: isMobile ? undefined : '30px',
+                        minWidth: isMobile ? '28px' : '30px',
                       }}
                       title={holiday ? (language === 'fr' ? holiday.name_fr : holiday.name) : undefined}
                     >
@@ -193,7 +193,7 @@ export default function MonthView() {
                           {dayNames[dayOfWeek === 0 ? 6 : dayOfWeek - 1] || ''}
                         </div>
                       )}
-                      <div className="font-bold" style={{ fontSize: isMobile ? '0.6rem' : '0.75rem', lineHeight: 1.1 }}>{date.getDate()}</div>
+                      <div className="font-bold" style={{ fontSize: isMobile ? '0.65rem' : '0.75rem', lineHeight: 1.1 }}>{date.getDate()}</div>
                       {holiday && <div className="w-1 h-1 rounded-full mx-auto mt-px" style={{ background: 'var(--neon-red)' }} />}
                     </th>
                   )
@@ -204,16 +204,16 @@ export default function MonthView() {
               {members
                 .filter((m) => m.is_active && m.name.toLowerCase().includes(memberSearch.toLowerCase()))
                 .map((member) => (
-                <tr key={member.id} style={{ height: isMobile ? '32px' : '28px' }}>
+                <tr key={member.id} style={{ height: isMobile ? '30px' : '28px' }}>
                   <td className="sticky left-0 z-10 px-1.5 text-xs font-medium truncate"
                     style={{
                       background: 'var(--surface-solid)',
                       color: 'var(--text)',
                       borderBottom: '1px solid var(--border-light)',
-                      width: isMobile ? '72px' : '140px',
-                      maxWidth: isMobile ? '72px' : '160px',
-                      height: isMobile ? '32px' : '28px',
-                      lineHeight: isMobile ? '32px' : '28px',
+                      width: isMobile ? '80px' : '140px',
+                      maxWidth: isMobile ? '80px' : '160px',
+                      height: isMobile ? '30px' : '28px',
+                      lineHeight: isMobile ? '30px' : '28px',
                       fontSize: isMobile ? '0.65rem' : undefined,
                     }}>
                     {member.name}
@@ -234,43 +234,30 @@ export default function MonthView() {
                         style={{
                           borderBottom: '1px solid var(--border-light)',
                           cursor: editable ? 'pointer' : 'default',
-                          padding: isMobile ? '1px' : '1px 2px',
-                          height: isMobile ? '32px' : '28px',
+                          padding: '1px',
+                          height: isMobile ? '30px' : '28px',
                           textAlign: 'center',
                           verticalAlign: 'middle',
+                          minWidth: isMobile ? '28px' : undefined,
                           background: firstCat ? `${firstCat.color}22` : 'transparent',
                           borderLeft: firstCat ? `3px solid ${firstCat.color}` : undefined,
                         }}
                         title={allDuties.map((d) => catMap.get(d.category_id)?.name || '').join(', ')}
                       >
-                        {isMobile ? (
-                          // Mobile: colored pill with letter, larger touch target
-                          allDuties.length > 0 && firstCat && (
-                            <span style={{
-                              display: 'inline-block',
-                              background: `${firstCat.color}33`,
-                              color: firstCat.color,
-                              borderRadius: '4px',
-                              padding: '1px 3px',
-                              fontSize: '0.6rem',
-                              fontWeight: 800,
+                        {allDuties.map((duty) => {
+                          const cat = catMap.get(duty.category_id)
+                          return cat ? (
+                            <span key={duty.id} style={{
+                              fontSize: isMobile ? '0.6rem' : '0.65rem',
+                              fontWeight: 700,
                               fontFamily: 'var(--font-mono)',
-                              lineHeight: 1.4,
+                              color: cat.color,
+                              marginRight: '1px',
                             }}>
-                              {allDuties.map((d) => catMap.get(d.category_id)?.letter || '').join('')}
+                              {cat.letter}
                             </span>
-                          )
-                        ) : (
-                          // Desktop: letter codes
-                          allDuties.map((duty) => {
-                            const cat = catMap.get(duty.category_id)
-                            return cat ? (
-                              <span key={duty.id} style={{ fontSize: '0.65rem', fontWeight: 700, fontFamily: 'var(--font-mono)', color: cat.color, marginRight: '1px' }}>
-                                {cat.letter}
-                              </span>
-                            ) : null
-                          })
-                        )}
+                          ) : null
+                        })}
                       </td>
                     )
                   })}
