@@ -7,8 +7,7 @@ import { getNotificationPermission, requestNotificationPermission } from '@/lib/
 import Modal from '@/components/UI/Modal'
 import ConfirmDialog from '@/components/UI/ConfirmDialog'
 import { Users, Plus, LogIn, Copy, Shield, Crown, UserCog, Bell } from 'lucide-react'
-import ApprovalList from './ApprovalList'
-import SwapList from './SwapList'
+// ApprovalList and SwapList moved to SwapsView in V2
 
 export default function TeamView() {
   const { t } = useI18n()
@@ -169,8 +168,7 @@ export default function TeamView() {
         </div>
       )}
 
-      {/* Approval management */}
-      <ApprovalList />
+      {/* Approvals and swaps moved to dedicated Swaps tab in V2 */}
 
       {/* Members & Roles */}
       <div className="p-4 rounded-xl" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
@@ -220,9 +218,6 @@ export default function TeamView() {
           })}
         </div>
       </div>
-
-      {/* Shift Swaps */}
-      <SwapList />
 
       <ConfirmDialog open={leaveConfirm} onClose={() => setLeaveConfirm(false)}
         onConfirm={handleLeave} title={t('team.leave')} message={t('team.confirmLeave')} danger />

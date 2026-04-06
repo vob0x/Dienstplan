@@ -50,7 +50,9 @@ export const permissions = {
   // Navigation / Views
   canAccessView(view: ViewType): boolean {
     switch (view) {
+      case 'dashboard': return true                    // everyone
       case 'calendar': return true                     // everyone
+      case 'swaps':    return true                     // everyone can see swaps
       case 'team':     return true                     // everyone can see team
       case 'manage':   return hasMinRole('planner')    // planner+
       case 'stats':    return hasMinRole('planner')    // planner+
@@ -126,7 +128,7 @@ export function usePermissions() {
       isMember: role === 'member',
 
       canAccessView: (view: ViewType) => {
-        if (view === 'calendar' || view === 'team') return true
+        if (view === 'dashboard' || view === 'calendar' || view === 'team' || view === 'swaps') return true
         return hasMin('planner')
       },
       canEditDuty: (memberId: string) => {

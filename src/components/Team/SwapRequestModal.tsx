@@ -32,7 +32,7 @@ export default function SwapRequestModal({ open, onClose }: Props) {
   const [targetDates, setTargetDates] = useState<string[]>([])
   const [dateInput, setDateInput] = useState('')
   const [requesterMemberId, setRequesterMemberId] = useState('')
-  const [requesterCategoryId, setRequesterCategoryId] = useState<string | null>(null)
+  const [requesterCategoryIds, setRequesterCategoryIds] = useState<Set<string>>(new Set())
   const [targetMemberId, setTargetMemberId] = useState('')
   const [targetCategoryId, setTargetCategoryId] = useState<string | null>(null)
   const [note, setNote] = useState('')
@@ -112,7 +112,7 @@ export default function SwapRequestModal({ open, onClose }: Props) {
     setTargetDates([])
     setDateInput('')
     setRequesterMemberId('')
-    setRequesterCategoryId(null)
+    setRequesterCategoryIds(new Set())
     setTargetMemberId('')
     setTargetCategoryId(null)
     setNote('')
@@ -129,19 +129,28 @@ export default function SwapRequestModal({ open, onClose }: Props) {
 
     setSubmitting(true)
     try {
-      // Build per-date entries
-      // For multi-date: use the same category selection for all dates
-      // (the requester picks a category from the first date, applied uniformly)
-      const dates = targetDates.map((date) => {
+      // Build per-date × per-category entries
+      // For each date, create one swap entry per selected requester category
+      const selectedCats = Array.from(requesterCategoryIds)
+      const dates = targetDates.flatMap((date) => {
         // Auto-detect target's first duty category on each date
         const tgtDuties = getDuties(targetMemberId, date)
         const autoTargetCat = targetCategoryId || (tgtDuties.length > 0 ? tgtDuties[0].category_id : null)
 
-        return {
-          target_date: date,
-          requester_category_id: requesterCategoryId,
-          target_category_id: swapType === 'swap' ? autoTargetCat : null,
+        if (selectedCats.length === 0) {
+          // No specific category selected — send one entry per date with null
+          return [{
+            target_date: date,
+            requester_category_id: null as string | null,
+            target_category_id: swapType === 'swap' ? autoTargetCat : null,
+          }]
         }
+
+        return selectedCats.map((catId) => ({
+          target_date: date,
+          requester_category_id: catId as string | null,
+          target_category_id: swapType === 'swap' ? autoTargetCat : null,
+        }))
       })
 
       await requestBatchSwap({
@@ -319,7 +328,7 @@ export default function SwapRequestModal({ open, onClose }: Props) {
               </label>
               <select
                 value={requesterMemberId}
-                onChange={(e) => { setRequesterMemberId(e.target.value); setRequesterCategoryId(null) }}
+                onChange={(e) => { setRequesterMemberId(e.target.value); setRequesterCategoryIds(new Set()) }}
                 className="w-full px-3 py-2.5 rounded-xl text-sm outline-none"
                 style={{ background: 'var(--surface-solid)', border: '1px solid var(--border)', color: 'var(--text)' }}
               >
@@ -356,11 +365,16 @@ export default function SwapRequestModal({ open, onClose }: Props) {
                 <div className="space-y-1.5">
                   {requesterDuties.map((d) => {
                     const cat = categories.find((c) => c.id === d.category_id)
-                    const selected = requesterCategoryId === d.category_id
+                    const selected = requesterCategoryIds.has(d.category_id)
                     return (
                       <button
                         key={d.id}
-                        onClick={() => setRequesterCategoryId(selected ? null : d.category_id)}
+                        onClick={() => setRequesterCategoryIds((prev) => {
+                          const next = new Set(prev)
+                          if (next.has(d.category_id)) next.delete(d.category_id)
+                          else next.add(d.category_id)
+                          return next
+                        })}
                         className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all"
                         style={{
                           background: selected ? `${cat?.color || 'var(--neon-cyan)'}22` : 'var(--surface)',
@@ -371,13 +385,24 @@ export default function SwapRequestModal({ open, onClose }: Props) {
                           style={{ background: `${cat?.color}33`, color: cat?.color }}>
                           {cat?.letter || '?'}
                         </span>
-                        <span className="text-sm font-medium" style={{ color: 'var(--text)' }}>{cat?.name || '?'}</span>
+                        <span className="flex-1 text-sm font-medium" style={{ color: 'var(--text)' }}>{cat?.name || '?'}</span>
+                        {selected && (
+                          <span className="w-5 h-5 rounded-full flex items-center justify-center"
+                            style={{ background: cat?.color || 'var(--neon-cyan)', color: '#fff' }}>
+                            ✓
+                          </span>
+                        )}
                       </button>
                     )
                   })}
+                  {requesterDuties.length > 1 && (
+                    <div className="text-[10px] mt-1" style={{ color: 'var(--text-muted)' }}>
+                      {t('swaps.multiDutyHint')}
+                    </div>
+                  )}
                 </div>
               )}
-              {requesterDuties.length > 0 && !requesterCategoryId && (
+              {requesterDuties.length > 0 && requesterCategoryIds.size === 0 && (
                 <div className="text-[10px] mt-1" style={{ color: 'var(--text-muted)' }}>
                   {t('swaps.noCategoryHint')}
                 </div>
@@ -492,10 +517,19 @@ export default function SwapRequestModal({ open, onClose }: Props) {
                 <div className="text-sm font-medium mb-1" style={{ color: 'var(--text)' }}>
                   {getMemberName(effectiveRequesterId)}
                 </div>
-                <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-bold"
-                  style={{ background: `${getCatColor(requesterCategoryId)}22`, color: getCatColor(requesterCategoryId) }}>
-                  {getCatLetter(requesterCategoryId)} {getCatName(requesterCategoryId)}
-                </span>
+                <div className="flex flex-wrap gap-1 justify-center">
+                  {requesterCategoryIds.size > 0 ? (
+                    Array.from(requesterCategoryIds).map((catId) => (
+                      <span key={catId} className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-bold"
+                        style={{ background: `${getCatColor(catId)}22`, color: getCatColor(catId) }}>
+                        {getCatLetter(catId)} {getCatName(catId)}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-bold"
+                      style={{ background: 'var(--surface)', color: 'var(--text-muted)' }}>—</span>
+                  )}
+                </div>
               </div>
 
               {/* Arrow */}

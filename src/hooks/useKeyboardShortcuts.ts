@@ -30,16 +30,13 @@ export function useKeyboardShortcuts(enabled: boolean = true) {
     // Undo/Redo
     { key: 'z', modifiers: ['ctrl'], description: t('help.shortcutsList.undo'), action: () => canUndo && undo() },
     { key: 'y', modifiers: ['ctrl'], description: t('help.shortcutsList.redo'), action: () => canRedo && redo() },
-    // Navigation views (number keys, simpler shortcuts)
-    { key: '1', modifiers: [], description: t('help.shortcutsList.navCalendar'), action: () => setCurrentView('calendar') },
-    { key: '2', modifiers: [], description: t('help.shortcutsList.navTeam'), action: () => setCurrentView('team') },
-    { key: '3', modifiers: [], description: t('help.shortcutsList.navManage'), action: () => setCurrentView('manage') },
-    { key: '4', modifiers: [], description: t('help.shortcutsList.navStats'), action: () => setCurrentView('stats') },
-    // Alt+1-4 for compatibility
-    { key: '1', modifiers: ['alt'], description: t('help.shortcutsList.navCalendar'), action: () => setCurrentView('calendar') },
-    { key: '2', modifiers: ['alt'], description: t('help.shortcutsList.navTeam'), action: () => setCurrentView('team') },
-    { key: '3', modifiers: ['alt'], description: t('help.shortcutsList.navManage'), action: () => setCurrentView('manage') },
-    { key: '4', modifiers: ['alt'], description: t('help.shortcutsList.navStats'), action: () => setCurrentView('stats') },
+    // Navigation views (Alt+number)
+    { key: '1', modifiers: ['alt'], description: t('help.shortcutsList.navDashboard'), action: () => setCurrentView('dashboard') },
+    { key: '2', modifiers: ['alt'], description: t('help.shortcutsList.navCalendar'), action: () => setCurrentView('calendar') },
+    { key: '3', modifiers: ['alt'], description: t('help.shortcutsList.navSwaps'), action: () => setCurrentView('swaps') },
+    { key: '4', modifiers: ['alt'], description: t('help.shortcutsList.navTeam'), action: () => setCurrentView('team') },
+    { key: '5', modifiers: ['alt'], description: t('help.shortcutsList.navManage'), action: () => setCurrentView('manage') },
+    { key: '6', modifiers: ['alt'], description: t('help.shortcutsList.navStats'), action: () => setCurrentView('stats') },
     // Help
     { key: '?', modifiers: ['shift'], description: t('help.shortcutsList.help'), action: () => toggleHelp() },
   ]

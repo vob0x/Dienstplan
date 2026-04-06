@@ -1,4 +1,4 @@
-import React, { lazy, Suspense, useState, useMemo } from 'react'
+import React, { lazy, Suspense, useState, useMemo, useEffect } from 'react'
 import { useUiStore } from '@/stores/uiStore'
 import { useAuthStore } from '@/stores/authStore'
 import { useTeamStore } from '@/stores/teamStore'
@@ -8,7 +8,11 @@ import { useDutyStore } from '@/stores/dutyStore'
 import { useSwapStore } from '@/stores/swapStore'
 import { syncTeamMembersToDpMembers } from '@/lib/syncTeamMembers'
 import { usePermissions } from '@/lib/permissions'
-import { Calendar, Users, Settings, BarChart3, Sun, Moon, LogOut, Globe, WifiOff, HelpCircle, RefreshCw } from 'lucide-react'
+import {
+  Home, Calendar, ArrowRightLeft, Users, Settings, BarChart3,
+  Sun, Moon, LogOut, Globe, WifiOff, HelpCircle, RefreshCw,
+  MoreHorizontal, X,
+} from 'lucide-react'
 import ToastContainer from '@/components/UI/Toast'
 import HelpPanel from '@/components/UI/HelpPanel'
 import RoleGuard from '@/components/UI/RoleGuard'
@@ -16,13 +20,13 @@ import MonthView from '@/components/Calendar/MonthView'
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
 import type { ViewType } from '@/types'
 
-// Retry-wrapper for lazy imports — retries once after clearing caches
-function lazyRetry<T extends React.ComponentType<unknown>>(
-  factory: () => Promise<{ default: T }>
-) {
+// ---------------------------------------------------------------------------
+// Lazy imports with retry
+// ---------------------------------------------------------------------------
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function lazyRetry(factory: () => Promise<{ default: React.ComponentType<any> }>) {
   return lazy(() =>
     factory().catch(() => {
-      // Clear caches and SW on chunk load failure, then retry once
       if ('caches' in window) caches.keys().then((k) => k.forEach((n) => caches.delete(n)))
       if (navigator.serviceWorker) navigator.serviceWorker.getRegistrations().then((r) => r.forEach((sw) => sw.unregister()))
       return factory()
@@ -33,11 +37,16 @@ function lazyRetry<T extends React.ComponentType<unknown>>(
 const WeekView = lazyRetry(() => import('@/components/Calendar/WeekView'))
 const DayView = lazyRetry(() => import('@/components/Calendar/DayView'))
 const YearView = lazyRetry(() => import('@/components/Calendar/YearView'))
+const DashboardView = lazyRetry(() => import('@/components/Dashboard/DashboardView'))
+const SwapsView = lazyRetry(() => import('@/components/Swaps/SwapsView'))
 const TeamView = lazyRetry(() => import('@/components/Team/TeamView'))
 const ManageView = lazyRetry(() => import('@/components/Manage/ManageView'))
 const StatsView = lazyRetry(() => import('@/components/Stats/StatsView'))
+const SetupWizard = lazyRetry(() => import('@/components/Setup/SetupWizard'))
 
-// Error boundary for chunk load failures
+// ---------------------------------------------------------------------------
+// Error boundary
+// ---------------------------------------------------------------------------
 class ChunkErrorBoundary extends React.Component<
   { children: React.ReactNode },
   { hasError: boolean }
@@ -70,9 +79,26 @@ class ChunkErrorBoundary extends React.Component<
   }
 }
 
+// ---------------------------------------------------------------------------
+// Mobile breakpoint hook
+// ---------------------------------------------------------------------------
+function useIsMobile(breakpoint = 768) {
+  const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < breakpoint)
+  useEffect(() => {
+    const mql = window.matchMedia(`(max-width: ${breakpoint - 1}px)`)
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches)
+    setIsMobile(mql.matches)
+    mql.addEventListener('change', handler)
+    return () => mql.removeEventListener('change', handler)
+  }, [breakpoint])
+  return isMobile
+}
+
+// ---------------------------------------------------------------------------
+// Calendar sub-router
+// ---------------------------------------------------------------------------
 function CalendarContent() {
   const calendarView = useUiStore((s) => s.calendarView)
-
   return (
     <Suspense fallback={<div className="flex items-center justify-center h-64"><div className="w-8 h-8 border-2 rounded-full animate-spin" style={{ borderColor: 'var(--border)', borderTopColor: 'var(--neon-cyan)' }} /></div>}>
       {calendarView === 'month' && <MonthView />}
@@ -83,6 +109,9 @@ function CalendarContent() {
   )
 }
 
+// ---------------------------------------------------------------------------
+// Layout
+// ---------------------------------------------------------------------------
 export default function Layout() {
   const { t } = useI18n()
   const { currentView, setCurrentView, theme, toggleTheme, language, setLanguage, helpOpen, setHelpOpen } = useUiStore()
@@ -91,9 +120,24 @@ export default function Layout() {
   const team = useTeamStore((s) => s.team)
   const fetchAll = useDutyStore((s) => s.fetchAll)
   const fetchSwaps = useSwapStore((s) => s.fetchSwaps)
+  const members = useDutyStore((s) => s.members)
+  const categories = useDutyStore((s) => s.categories)
   const [refreshing, setRefreshing] = useState(false)
+  const [moreMenuOpen, setMoreMenuOpen] = useState(false)
+  const [showSetup, setShowSetup] = useState(false)
+  const isMobile = useIsMobile()
 
   const fetchTeamData = useTeamStore((s) => s.fetchTeamData)
+
+  // Check if setup wizard should show
+  useEffect(() => {
+    if (team && members.length === 0 && categories.length === 0) {
+      const setupDone = localStorage.getItem('dp_setup_complete')
+      if (!setupDone) {
+        setShowSetup(true)
+      }
+    }
+  }, [team, members.length, categories.length])
 
   const handleRefresh = async () => {
     if (!team || refreshing) return
@@ -108,14 +152,12 @@ export default function Layout() {
     }
   }
 
-  // Setup keyboard shortcuts
   useKeyboardShortcuts(true)
 
   const { canAccessView, isPlanner } = usePermissions()
 
-  // Reactive swap badge count
+  // Swap badge count
   const swaps = useSwapStore((s) => s.swaps)
-  const members = useDutyStore((s) => s.members)
   const swapBadge = useMemo(() => {
     if (!profile) return 0
     const myMember = members.find((m) => m.user_id === profile.id)
@@ -128,15 +170,47 @@ export default function Layout() {
     return count
   }, [swaps, members, profile, isPlanner])
 
-  const allNavItems: Array<{ id: ViewType; icon: typeof Calendar; label: string }> = [
+  // Navigation items
+  const allNavItems: Array<{ id: ViewType; icon: typeof Calendar; label: string; mobileOnly?: boolean; desktopOnly?: boolean }> = [
+    { id: 'dashboard', icon: Home, label: t('nav.dashboard') },
     { id: 'calendar', icon: Calendar, label: t('nav.calendar') },
+    { id: 'swaps', icon: ArrowRightLeft, label: t('nav.swaps') },
     { id: 'team', icon: Users, label: t('nav.team') },
     { id: 'manage', icon: Settings, label: t('nav.manage') },
     { id: 'stats', icon: BarChart3, label: t('nav.stats') },
   ]
 
-  // Filter nav items based on user role
   const navItems = allNavItems.filter((item) => canAccessView(item.id))
+
+  // Mobile: show max 4 items in bottom nav, rest in overflow
+  const mobileMainNav = navItems.slice(0, 4)
+  const mobileOverflowNav = navItems.slice(4)
+  const hasOverflow = mobileOverflowNav.length > 0
+
+  // Setup wizard
+  if (showSetup && team) {
+    return (
+      <div className="h-screen flex flex-col" style={{ background: 'var(--bg)' }}>
+        <header className="sticky top-0 z-40 no-print" style={{
+          background: 'var(--surface-elevated)',
+          borderBottom: '1px solid var(--border)',
+          paddingTop: 'env(safe-area-inset-top, 0px)',
+        }}>
+          <div className="flex items-center justify-between px-4 py-2">
+            <h1 className="text-lg font-bold" style={{ fontFamily: 'var(--font-display)', color: 'var(--neon-cyan)' }}>
+              {t('app.name')}
+            </h1>
+          </div>
+        </header>
+        <main className="flex-1 overflow-y-auto">
+          <Suspense fallback={null}>
+            <SetupWizard onComplete={() => setShowSetup(false)} />
+          </Suspense>
+        </main>
+        <ToastContainer />
+      </div>
+    )
+  }
 
   return (
     <div className="h-screen flex flex-col" style={{ background: 'var(--bg)' }}>
@@ -154,7 +228,8 @@ export default function Layout() {
               {t('app.name')}
             </h1>
             {team && (
-              <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'var(--surface-active)', color: 'var(--text-secondary)' }}>
+              <span className="text-xs px-2 py-0.5 rounded-full hidden sm:inline-block"
+                style={{ background: 'var(--surface-active)', color: 'var(--text-secondary)' }}>
                 {team.name}
               </span>
             )}
@@ -162,9 +237,8 @@ export default function Layout() {
 
           {/* Center: Navigation (desktop) */}
           <nav className="hidden md:flex items-center gap-1" role="navigation" aria-label={t('nav.main')}>
-            {navItems.map((item, idx) => {
+            {navItems.map((item) => {
               const active = currentView === item.id
-              const shortcutKey = (idx + 1).toString()
               return (
                 <button
                   key={item.id}
@@ -175,13 +249,12 @@ export default function Layout() {
                     color: active ? 'var(--neon-cyan)' : 'var(--text-secondary)',
                     borderBottom: active ? '2px solid var(--neon-cyan)' : '2px solid transparent',
                   }}
-                  title={`${item.label} (Alt+${shortcutKey})`}
                   aria-current={active ? 'page' : undefined}
                 >
                   <span className="relative">
                     <item.icon size={18} />
-                    {item.id === 'team' && swapBadge > 0 && (
-                      <span className="absolute -top-1.5 -right-2 min-w-[16px] h-4 flex items-center justify-center px-1 rounded-full text-[10px] font-bold animate-pulse"
+                    {item.id === 'swaps' && swapBadge > 0 && (
+                      <span className="absolute -top-1.5 -right-2 min-w-[16px] h-4 flex items-center justify-center px-1 rounded-full text-[10px] font-bold"
                         style={{ background: 'var(--neon-violet)', color: '#fff' }}>
                         {swapBadge}
                       </span>
@@ -194,59 +267,78 @@ export default function Layout() {
           </nav>
 
           {/* Right: Controls */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             {!isSupabaseAvailable() && (
-              <div className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs" style={{ background: 'rgba(212,112,110,0.1)', color: 'var(--danger)' }} title={t('ui.offline')}>
+              <div className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs"
+                style={{ background: 'rgba(212,112,110,0.1)', color: 'var(--danger)' }}
+                title={t('ui.offline')}>
                 <WifiOff size={14} />
                 <span className="hidden sm:inline">{t('ui.offline')}</span>
               </div>
             )}
             <button onClick={handleRefresh} disabled={refreshing}
-              className="p-2 rounded-xl transition-colors" style={{ color: refreshing ? 'var(--neon-cyan)' : 'var(--text-secondary)' }}
+              className="p-2 rounded-xl transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+              style={{ color: refreshing ? 'var(--neon-cyan)' : 'var(--text-secondary)' }}
               title={t('ui.refresh')}>
               <RefreshCw size={16} className={refreshing ? 'animate-spin' : ''} />
             </button>
-            <button onClick={() => setHelpOpen(true)} className="p-2 rounded-xl transition-colors" style={{ color: 'var(--text-secondary)' }} title={t('help.title') + ' (?)'}>
-              <HelpCircle size={18} />
-            </button>
-            <button onClick={() => setLanguage(language === 'de' ? 'fr' : 'de')} className="p-2 rounded-xl text-xs font-mono font-bold transition-colors"
-              style={{ color: 'var(--text-secondary)' }}
-              title={language === 'de' ? 'Français' : 'Deutsch'}>
-              <Globe size={18} />
-            </button>
-            <button onClick={toggleTheme} className="p-2 rounded-xl transition-colors" style={{ color: 'var(--text-secondary)' }} title={theme === 'cyber' ? t('ui.theme.light') : t('ui.theme.dark')}>
-              {theme === 'cyber' ? <Sun size={18} /> : <Moon size={18} />}
-            </button>
+            {!isMobile && (
+              <>
+                <button onClick={() => setHelpOpen(true)}
+                  className="p-2 rounded-xl transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+                  style={{ color: 'var(--text-secondary)' }}
+                  title={t('help.title') + ' (?)'}>
+                  <HelpCircle size={18} />
+                </button>
+                <button onClick={() => setLanguage(language === 'de' ? 'fr' : 'de')}
+                  className="p-2 rounded-xl text-xs font-mono font-bold transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+                  style={{ color: 'var(--text-secondary)' }}
+                  title={language === 'de' ? 'Français' : 'Deutsch'}>
+                  <Globe size={18} />
+                </button>
+                <button onClick={toggleTheme}
+                  className="p-2 rounded-xl transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+                  style={{ color: 'var(--text-secondary)' }}
+                  title={theme === 'cyber' ? t('ui.theme.light') : t('ui.theme.dark')}>
+                  {theme === 'cyber' ? <Sun size={18} /> : <Moon size={18} />}
+                </button>
+              </>
+            )}
             {profile && (
-              <span className="text-xs font-mono px-2 py-1 rounded-lg hidden sm:block" style={{ background: 'var(--surface)', color: 'var(--text-muted)' }}>
+              <span className="text-xs font-mono px-2 py-1 rounded-lg hidden sm:block"
+                style={{ background: 'var(--surface)', color: 'var(--text-muted)' }}>
                 {profile.codename}
               </span>
             )}
-            <button onClick={signOut} className="p-2 rounded-xl transition-colors" style={{ color: 'var(--text-muted)' }} title={t('auth.signOut')}>
+            <button onClick={signOut}
+              className="p-2 rounded-xl transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+              style={{ color: 'var(--text-muted)' }}
+              title={t('auth.signOut')}>
               <LogOut size={18} />
             </button>
           </div>
         </div>
-
       </header>
 
       {/* Main content */}
-      <main className="flex-1 min-h-0 overflow-y-auto max-w-[1400px] mx-auto w-full px-4 py-4 pb-20 md:pb-4">
+      <main className="flex-1 min-h-0 overflow-y-auto max-w-[1400px] mx-auto w-full px-4 py-4 pb-24 md:pb-4">
         <ChunkErrorBoundary>
-        <Suspense fallback={<div className="flex items-center justify-center h-64"><div className="w-8 h-8 border-2 rounded-full animate-spin" style={{ borderColor: 'var(--border)', borderTopColor: 'var(--neon-cyan)' }} /></div>}>
-          {currentView === 'calendar' && <CalendarContent />}
-          {currentView === 'team' && <TeamView />}
-          {currentView === 'manage' && (
-            <RoleGuard minRole="planner" showDenied>
-              <ManageView />
-            </RoleGuard>
-          )}
-          {currentView === 'stats' && (
-            <RoleGuard minRole="planner" showDenied>
-              <StatsView />
-            </RoleGuard>
-          )}
-        </Suspense>
+          <Suspense fallback={<div className="flex items-center justify-center h-64"><div className="w-8 h-8 border-2 rounded-full animate-spin" style={{ borderColor: 'var(--border)', borderTopColor: 'var(--neon-cyan)' }} /></div>}>
+            {currentView === 'dashboard' && <DashboardView />}
+            {currentView === 'calendar' && <CalendarContent />}
+            {currentView === 'swaps' && <SwapsView />}
+            {currentView === 'team' && <TeamView />}
+            {currentView === 'manage' && (
+              <RoleGuard minRole="planner" showDenied>
+                <ManageView />
+              </RoleGuard>
+            )}
+            {currentView === 'stats' && (
+              <RoleGuard minRole="planner" showDenied>
+                <StatsView />
+              </RoleGuard>
+            )}
+          </Suspense>
         </ChunkErrorBoundary>
       </main>
 
@@ -258,30 +350,123 @@ export default function Layout() {
         paddingBottom: 'env(safe-area-inset-bottom)',
       }} role="navigation" aria-label={t('nav.mobile')}>
         <div className="flex items-center justify-around py-1">
-          {navItems.map((item) => {
+          {mobileMainNav.map((item) => {
             const active = currentView === item.id
             return (
               <button
                 key={item.id}
-                onClick={() => setCurrentView(item.id)}
-                className="flex flex-col items-center gap-0.5 py-1 px-3 transition-all"
-                style={{ color: active ? 'var(--neon-cyan)' : 'var(--text-muted)', fontSize: '0.65rem' }}
+                onClick={() => { setCurrentView(item.id); setMoreMenuOpen(false) }}
+                className="flex flex-col items-center gap-0.5 py-1.5 px-3 transition-all min-w-[60px] min-h-[48px] justify-center"
+                style={{ color: active ? 'var(--neon-cyan)' : 'var(--text-muted)', fontSize: '0.6rem' }}
                 aria-current={active ? 'page' : undefined}
               >
                 <span className="relative">
-                  <item.icon size={20} strokeWidth={active ? 2.5 : 2} />
-                  {item.id === 'team' && swapBadge > 0 && (
-                    <span className="absolute -top-1 -right-2.5 min-w-[16px] h-4 flex items-center justify-center px-1 rounded-full text-[10px] font-bold animate-pulse"
+                  <item.icon size={22} strokeWidth={active ? 2.5 : 1.8} />
+                  {item.id === 'swaps' && swapBadge > 0 && (
+                    <span className="absolute -top-1 -right-2.5 min-w-[16px] h-4 flex items-center justify-center px-1 rounded-full text-[10px] font-bold"
                       style={{ background: 'var(--neon-violet)', color: '#fff' }}>
                       {swapBadge}
                     </span>
                   )}
                 </span>
-                <span>{item.label}</span>
+                <span style={{ fontWeight: active ? 700 : 400 }}>{item.label}</span>
+                {/* Active indicator line */}
+                {active && (
+                  <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-6 h-0.5 rounded-full"
+                    style={{ background: 'var(--neon-cyan)' }} />
+                )}
               </button>
             )
           })}
+
+          {/* Overflow "More" button */}
+          {hasOverflow && (
+            <button
+              onClick={() => setMoreMenuOpen(!moreMenuOpen)}
+              className="flex flex-col items-center gap-0.5 py-1.5 px-3 transition-all min-w-[60px] min-h-[48px] justify-center relative"
+              style={{
+                color: moreMenuOpen || mobileOverflowNav.some((i) => i.id === currentView)
+                  ? 'var(--neon-cyan)'
+                  : 'var(--text-muted)',
+                fontSize: '0.6rem',
+              }}
+            >
+              <MoreHorizontal size={22} strokeWidth={1.8} />
+              <span>{t('nav.more')}</span>
+            </button>
+          )}
         </div>
+
+        {/* Overflow menu */}
+        {moreMenuOpen && (
+          <>
+            {/* Backdrop */}
+            <div className="fixed inset-0 z-30" onClick={() => setMoreMenuOpen(false)} />
+
+            {/* Menu */}
+            <div className="absolute bottom-full left-0 right-0 z-40 p-3 animate-slide-in-up"
+              style={{
+                background: 'var(--surface-elevated)',
+                borderTop: '1px solid var(--border)',
+                boxShadow: 'var(--shadow-lg)',
+              }}>
+              <div className="flex items-center justify-between mb-2 px-1">
+                <span className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>{t('nav.more')}</span>
+                <button onClick={() => setMoreMenuOpen(false)} className="p-1 rounded-lg"
+                  style={{ color: 'var(--text-muted)' }}>
+                  <X size={16} />
+                </button>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                {mobileOverflowNav.map((item) => {
+                  const active = currentView === item.id
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => { setCurrentView(item.id); setMoreMenuOpen(false) }}
+                      className="flex flex-col items-center gap-1.5 py-3 px-2 rounded-xl transition-all min-h-[60px] justify-center"
+                      style={{
+                        background: active ? 'var(--surface-active)' : 'var(--surface)',
+                        color: active ? 'var(--neon-cyan)' : 'var(--text-secondary)',
+                      }}
+                    >
+                      <item.icon size={20} />
+                      <span className="text-[11px] font-medium">{item.label}</span>
+                    </button>
+                  )
+                })}
+
+                {/* Settings items in overflow for mobile */}
+                <button
+                  onClick={() => { setLanguage(language === 'de' ? 'fr' : 'de'); setMoreMenuOpen(false) }}
+                  className="flex flex-col items-center gap-1.5 py-3 px-2 rounded-xl transition-all min-h-[60px] justify-center"
+                  style={{ background: 'var(--surface)', color: 'var(--text-secondary)' }}
+                >
+                  <Globe size={20} />
+                  <span className="text-[11px] font-medium">{language === 'de' ? 'FR' : 'DE'}</span>
+                </button>
+                <button
+                  onClick={() => { toggleTheme(); setMoreMenuOpen(false) }}
+                  className="flex flex-col items-center gap-1.5 py-3 px-2 rounded-xl transition-all min-h-[60px] justify-center"
+                  style={{ background: 'var(--surface)', color: 'var(--text-secondary)' }}
+                >
+                  {theme === 'cyber' ? <Sun size={20} /> : <Moon size={20} />}
+                  <span className="text-[11px] font-medium">
+                    {theme === 'cyber' ? t('ui.theme.light') : t('ui.theme.dark')}
+                  </span>
+                </button>
+                <button
+                  onClick={() => { setHelpOpen(true); setMoreMenuOpen(false) }}
+                  className="flex flex-col items-center gap-1.5 py-3 px-2 rounded-xl transition-all min-h-[60px] justify-center"
+                  style={{ background: 'var(--surface)', color: 'var(--text-secondary)' }}
+                >
+                  <HelpCircle size={20} />
+                  <span className="text-[11px] font-medium">{t('help.title')}</span>
+                </button>
+              </div>
+            </div>
+          </>
+        )}
       </nav>
 
       <ToastContainer />

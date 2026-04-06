@@ -89,12 +89,16 @@ export default function HelpPanel({ open, onClose }: HelpPanelProps) {
               </p>
               <div className="grid gap-1 text-xs" style={{ color: 'var(--text-muted)' }}>
                 <div className="flex justify-between">
-                  <span><kbd className="px-2 py-0.5 rounded" style={{ background: 'var(--surface)' }}>Alt+1</kbd> - {t('nav.calendar')}</span>
-                  <span><kbd className="px-2 py-0.5 rounded" style={{ background: 'var(--surface)' }}>Alt+2</kbd> - {t('nav.team')}</span>
+                  <span><kbd className="px-2 py-0.5 rounded" style={{ background: 'var(--surface)' }}>Alt+1</kbd> - {t('nav.dashboard')}</span>
+                  <span><kbd className="px-2 py-0.5 rounded" style={{ background: 'var(--surface)' }}>Alt+2</kbd> - {t('nav.calendar')}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span><kbd className="px-2 py-0.5 rounded" style={{ background: 'var(--surface)' }}>Alt+3</kbd> - {t('nav.manage')}</span>
-                  <span><kbd className="px-2 py-0.5 rounded" style={{ background: 'var(--surface)' }}>Alt+4</kbd> - {t('nav.stats')}</span>
+                  <span><kbd className="px-2 py-0.5 rounded" style={{ background: 'var(--surface)' }}>Alt+3</kbd> - {t('nav.swaps')}</span>
+                  <span><kbd className="px-2 py-0.5 rounded" style={{ background: 'var(--surface)' }}>Alt+4</kbd> - {t('nav.team')}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span><kbd className="px-2 py-0.5 rounded" style={{ background: 'var(--surface)' }}>Alt+5</kbd> - {t('nav.manage')}</span>
+                  <span><kbd className="px-2 py-0.5 rounded" style={{ background: 'var(--surface)' }}>Alt+6</kbd> - {t('nav.stats')}</span>
                 </div>
               </div>
             </div>

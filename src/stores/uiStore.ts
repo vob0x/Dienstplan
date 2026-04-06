@@ -67,7 +67,7 @@ function getMonday(date: Date): string {
 export const useUiStore = create<UiState>((set, get) => ({
   theme: (localStorage.getItem('dp-theme') as Theme) || 'cyber',
   language: (localStorage.getItem('dp-lang') as Language) || 'de',
-  currentView: 'calendar',
+  currentView: 'dashboard',
   calendarView: 'month',
   year: now.getFullYear(),
   month: now.getMonth(),

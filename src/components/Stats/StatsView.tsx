@@ -4,7 +4,7 @@ import { useDutyStore } from '@/stores/dutyStore'
 import { useI18n } from '@/i18n'
 import { getHolidays, isWeekend } from '@/lib/holidays'
 import { toDateStr } from '@/lib/utils'
-import { BarChart3, ChevronLeft, ChevronRight } from 'lucide-react'
+import { BarChart3, ChevronLeft, ChevronRight, RotateCcw } from 'lucide-react'
 
 export default function StatsView() {
   const { t } = useI18n()
@@ -105,6 +105,14 @@ export default function StatsView() {
             </button>
           )
         })}
+        {selectedCategories.size < categories.length && (
+          <button onClick={() => setSelectedCategories(new Set(categories.map(c => c.id)))}
+            className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium transition-all"
+            style={{ background: 'var(--surface-active)', color: 'var(--neon-cyan)', border: '1px solid var(--border)' }}>
+            <RotateCcw size={12} />
+            {t('stats.resetFilter')}
+          </button>
+        )}
       </div>
 
       {/* Member stats cards */}

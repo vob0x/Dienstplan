@@ -153,7 +153,7 @@ export interface DpUserSettings {
 export type Language = 'de' | 'fr'
 export type Theme = 'cyber' | 'light'
 export type CalendarView = 'month' | 'week' | 'day' | 'year'
-export type ViewType = 'calendar' | 'team' | 'manage' | 'stats'
+export type ViewType = 'dashboard' | 'calendar' | 'swaps' | 'team' | 'manage' | 'stats'
 
 export interface Toast {
   id: string

@@ -230,7 +230,22 @@ export const useTeamStore = create<TeamState>((set, get) => ({
         .select('*')
         .eq('team_id', team.id)
 
-      set({ roles: (data || []) as DpRole[] })
+      const roles = (data || []) as DpRole[]
+      set({ roles })
+
+      // Auto-repair: if team creator has no role entry, insert admin
+      const { data: { session } } = await supabaseClient.auth.getSession()
+      if (session?.user && team.creator_id === session.user.id) {
+        const hasRole = roles.some((r) => r.user_id === session.user.id)
+        if (!hasRole) {
+          await supabaseClient
+            .from('dp_roles')
+            .upsert({ team_id: team.id, user_id: session.user.id, role: 'admin' }, { onConflict: 'team_id,user_id' })
+          set((s) => ({
+            roles: [...s.roles, { id: '', team_id: team.id, user_id: session.user.id, role: 'admin', created_at: new Date().toISOString() }],
+          }))
+        }
+      }
     } catch (e) {
       console.warn('Failed to fetch roles:', e)
     }
@@ -275,7 +290,10 @@ export const useTeamStore = create<TeamState>((set, get) => ({
   getUserRole: (userId) => {
     const { roles, team } = get()
     const role = roles.find((r) => r.user_id === userId && r.team_id === team?.id)
-    return role?.role || 'member'
+    if (role?.role) return role.role
+    // Fallback: team creator is always admin (handles pre-migration teams)
+    if (team?.creator_id === userId) return 'admin'
+    return 'member'
   },
 
   isAdmin: (userId) => get().getUserRole(userId) === 'admin',
