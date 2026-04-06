@@ -30,7 +30,7 @@ function AppContent() {
         const currentTeam = useTeamStore.getState().team
         if (currentTeam) {
           await fetchAll(currentTeam.id)
-          await syncTeamMembersToDpMembers()
+          try { await syncTeamMembersToDpMembers() } catch {}
           subscribeToDutySync()
           await fetchSwaps(currentTeam.id)
           initSwapNotifications() // Snapshot current swaps as baseline

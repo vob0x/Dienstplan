@@ -28,7 +28,10 @@ export async function syncTeamMembersToDpMembers(): Promise<number> {
           await useDutyStore.getState().updateMember(newMember.id, { user_id: tm.user_id })
           synced++
         }
-      } catch { /* duplicate name or other — skip */ }
+      } catch (e) {
+        // duplicate name, RLS denial, or other — skip silently
+        console.debug('[Sync] Skipping member:', displayName, e)
+      }
     }
   }
 

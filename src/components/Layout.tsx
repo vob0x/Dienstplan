@@ -146,8 +146,13 @@ export default function Layout() {
     try {
       await fetchTeamData()
       await fetchAll(team.id)
-      await syncTeamMembersToDpMembers()
+      // Sync team→dp_members only for admin/planner (member management is admin-only)
+      if (isPlanner) {
+        try { await syncTeamMembersToDpMembers() } catch {}
+      }
       await fetchSwaps(team.id)
+    } catch (e) {
+      console.warn('Refresh failed:', e)
     } finally {
       setRefreshing(false)
     }
