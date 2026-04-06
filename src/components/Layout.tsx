@@ -142,16 +142,28 @@ export default function Layout() {
   }, [team, dutyLoading, members.length, categories.length, isAdmin])
 
   const handleRefresh = async () => {
-    if (!team || refreshing) return
+    if (refreshing) return
     setRefreshing(true)
     try {
+      // Always re-fetch team data (might have changed, or user left/joined)
       await fetchTeamData()
-      await fetchAll(team.id)
-      // Sync team→dp_members only for admin/planner (member management is admin-only)
-      if (isPlanner) {
-        try { await syncTeamMembersToDpMembers() } catch {}
+      const currentTeam = useTeamStore.getState().team
+      if (currentTeam) {
+        await fetchAll(currentTeam.id)
+        // Sync team→dp_members only for admin/planner (member management is admin-only)
+        if (isPlanner) {
+          try { await syncTeamMembersToDpMembers() } catch {}
+        }
+        await fetchSwaps(currentTeam.id)
+      } else {
+        // No team — clear any stale data
+        useDutyStore.setState({
+          members: [], categories: [], duties: [],
+          teamId: null, undoStack: [], redoStack: [],
+          canUndo: false, canRedo: false,
+        })
+        useSwapStore.setState({ swaps: [] })
       }
-      await fetchSwaps(team.id)
     } catch (e) {
       console.warn('Refresh failed:', e)
     } finally {
