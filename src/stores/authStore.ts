@@ -241,7 +241,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   signOut: async () => {
     try {
       if (isSupabaseAvailable() && supabaseClient) {
-        await supabaseClient.auth.signOut()
+        await supabaseClient.auth.signOut({ scope: 'local' })
       }
     } catch (e) {
       console.warn('SignOut error:', e)
