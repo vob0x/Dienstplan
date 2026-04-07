@@ -39,7 +39,7 @@ export default function Modal({ open, onClose, title, children, maxWidth, size =
       onClick={(e) => { if (e.target === overlayRef.current) onClose() }}
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
       style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)' }}
-      role="presentation"
+      role="none"
     >
       <div
         className="w-full animate-slide-in-up"
@@ -49,7 +49,7 @@ export default function Modal({ open, onClose, title, children, maxWidth, size =
           borderRadius: 'var(--radius-xl)',
           border: '1px solid var(--border)',
           boxShadow: 'var(--shadow-lg)',
-          maxHeight: '85vh',
+          maxHeight: 'min(92vh, 680px)',
           display: 'flex',
           flexDirection: 'column',
         }}

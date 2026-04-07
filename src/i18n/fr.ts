@@ -42,6 +42,7 @@ export const fr = {
     approvalHint: 'Les services nécessitant une approbation apparaissent dans la liste des approbations pour les administrateurs',
     new: 'Nouveau',
   },
+  profile: { title: 'Profil' },
   team: {
     title: 'Équipe', create: 'Créer une équipe', join: "Rejoindre l'équipe",
     inviteCode: "Code d'invitation", name: "Nom de l'équipe", namePlaceholder: 'p.ex. Équipe A',
@@ -85,7 +86,7 @@ export const fr = {
     datesSelected: 'jours sélectionnés',
     groupedSwap: 'Échange groupé',
     categoryAppliedToAll: 'appliqué à tous les jours',
-    noSwaps: 'Aucune demande d\'échange ouverte.',
+    noSwaps: 'Aucune demande d\'échange ouverte.', emptyState: 'Les demandes d\'échange et approbations apparaîtront ici.',
     createError: 'Erreur lors de la création de la demande',
   },
   approvals: {

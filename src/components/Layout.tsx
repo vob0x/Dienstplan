@@ -11,7 +11,7 @@ import { usePermissions } from '@/lib/permissions'
 import {
   Home, Calendar, ArrowRightLeft, Users, Settings, BarChart3,
   Sun, Moon, LogOut, Globe, WifiOff, HelpCircle, RefreshCw,
-  MoreHorizontal, X,
+  X,
 } from 'lucide-react'
 import ToastContainer from '@/components/UI/Toast'
 import HelpPanel from '@/components/UI/HelpPanel'
@@ -261,7 +261,7 @@ export default function Layout() {
             <button onClick={handleRefresh} disabled={refreshing}
               className="p-2 rounded-xl transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
               style={{ color: refreshing ? 'var(--neon-cyan)' : 'var(--text-secondary)' }}
-              title={t('ui.refresh')}>
+              title={t('ui.refresh')} aria-label={t('ui.refresh')}>
               <RefreshCw size={16} className={refreshing ? 'animate-spin' : ''} />
             </button>
             {!isMobile && (
@@ -269,19 +269,19 @@ export default function Layout() {
                 <button onClick={() => setHelpOpen(true)}
                   className="p-2 rounded-xl transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
                   style={{ color: 'var(--text-secondary)' }}
-                  title={t('help.title') + ' (?)'}>
+                  title={t('help.title') + ' (?)'} aria-label={t('help.title')}>
                   <HelpCircle size={18} />
                 </button>
                 <button onClick={() => setLanguage(language === 'de' ? 'fr' : 'de')}
                   className="p-2 rounded-xl text-xs font-mono font-bold transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
                   style={{ color: 'var(--text-secondary)' }}
-                  title={language === 'de' ? 'Français' : 'Deutsch'}>
+                  title={language === 'de' ? 'Français' : 'Deutsch'} aria-label={language === 'de' ? 'Français' : 'Deutsch'}>
                   <Globe size={18} />
                 </button>
                 <button onClick={toggleTheme}
                   className="p-2 rounded-xl transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
                   style={{ color: 'var(--text-secondary)' }}
-                  title={theme === 'cyber' ? t('ui.theme.light') : t('ui.theme.dark')}>
+                  title={theme === 'cyber' ? t('ui.theme.light') : t('ui.theme.dark')} aria-label={theme === 'cyber' ? t('ui.theme.light') : t('ui.theme.dark')}>
                   {theme === 'cyber' ? <Sun size={18} /> : <Moon size={18} />}
                 </button>
               </>
@@ -295,7 +295,7 @@ export default function Layout() {
             <button onClick={signOut}
               className="p-2 rounded-xl transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
               style={{ color: 'var(--text-muted)' }}
-              title={t('auth.signOut')}>
+              title={t('auth.signOut')} aria-label={t('auth.signOut')}>
               <LogOut size={18} />
             </button>
           </div>
@@ -373,7 +373,7 @@ export default function Layout() {
                 fontSize: '0.6rem',
               }}
             >
-              <MoreHorizontal size={22} strokeWidth={1.8} />
+              <Settings size={22} strokeWidth={1.8} />
               <span>{t('nav.more')}</span>
             </button>
           )}

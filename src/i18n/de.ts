@@ -42,6 +42,7 @@ export const de = {
     approvalHint: 'Dienste mit Genehmigungspflicht erscheinen in der Genehmigungsliste für Admins',
     new: 'Neu',
   },
+  profile: { title: 'Profil' },
   team: {
     title: 'Team', create: 'Team erstellen', join: 'Team beitreten',
     inviteCode: 'Einladungscode', name: 'Teamname', namePlaceholder: 'z.B. Schicht-Team A',
@@ -92,7 +93,7 @@ export const de = {
     groupedSwap: 'Gruppierter Tausch',
     categoryAppliedToAll: 'wird auf alle Tage angewendet',
     // Other
-    noSwaps: 'Keine offenen Tausch-Anfragen.',
+    noSwaps: 'Keine offenen Tausch-Anfragen.', emptyState: 'Hier erscheinen Tausch-Anfragen und Genehmigungen, sobald welche vorliegen.',
     createError: 'Fehler beim Erstellen der Anfrage',
   },
   approvals: {

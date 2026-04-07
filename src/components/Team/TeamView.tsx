@@ -251,7 +251,7 @@ export default function TeamView() {
       {profile && (
         <div className="p-4 rounded-xl" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
           <h3 className="text-sm font-bold mb-3" style={{ fontFamily: 'var(--font-display)', color: 'var(--text-secondary)' }}>
-            {t('nav.dashboard') === 'Start' ? 'Profil' : 'Profil'}
+            {t('profile.title')}
           </h3>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
