@@ -255,6 +255,32 @@ export const useAuthStore = create<AuthState>((set) => ({
 }))
 
 /**
+ * Change the current user's password.
+ * Requires current password for verification, then sets the new one.
+ */
+export async function changePassword(currentPassword: string, newPassword: string): Promise<{ success: boolean; error?: string }> {
+  const profile = useAuthStore.getState().profile
+  if (!profile || !isSupabaseAvailable() || !supabaseClient) {
+    return { success: false, error: 'NOT_AVAILABLE' }
+  }
+
+  try {
+    // Step 1: Verify current password
+    const email = codeToEmail(profile.codename)
+    const { error: verifyErr } = await supabaseClient.auth.signInWithPassword({ email, password: currentPassword })
+    if (verifyErr) return { success: false, error: 'WRONG_PASSWORD' }
+
+    // Step 2: Update to new password
+    const { error: updateErr } = await supabaseClient.auth.updateUser({ password: newPassword })
+    if (updateErr) return { success: false, error: updateErr.message }
+
+    return { success: true }
+  } catch {
+    return { success: false, error: 'UNKNOWN' }
+  }
+}
+
+/**
  * Verify the current user's password by re-authenticating with Supabase.
  * Returns true if the password is correct, false otherwise.
  */

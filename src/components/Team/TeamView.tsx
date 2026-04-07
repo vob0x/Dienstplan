@@ -1,13 +1,13 @@
 import { useState } from 'react'
 import { useTeamStore } from '@/stores/teamStore'
 import { useAuthStore } from '@/stores/authStore'
+import { changePassword } from '@/stores/authStore'
 import { useUiStore } from '@/stores/uiStore'
 import { useI18n } from '@/i18n'
 import { getNotificationPermission, requestNotificationPermission } from '@/lib/notifications'
 import Modal from '@/components/UI/Modal'
 import ConfirmDialog from '@/components/UI/ConfirmDialog'
-import { Users, Plus, LogIn, Copy, Shield, Crown, UserCog, Bell } from 'lucide-react'
-// ApprovalList and SwapList moved to SwapsView in V2
+import { Users, Plus, LogIn, Copy, Shield, Crown, UserCog, Bell, KeyRound, Loader2, User } from 'lucide-react'
 
 export default function TeamView() {
   const { t } = useI18n()
@@ -24,6 +24,32 @@ export default function TeamView() {
   const currentUserIsAdmin = profile ? isAdmin(profile.id) : false
   const [notifPerm, setNotifPerm] = useState<string>(() => getNotificationPermission())
   const [notifDismissed, setNotifDismissed] = useState(() => !!localStorage.getItem('dp_notif_dismissed'))
+
+  // Password change
+  const [pwModalOpen, setPwModalOpen] = useState(false)
+  const [pwCurrent, setPwCurrent] = useState('')
+  const [pwNew, setPwNew] = useState('')
+  const [pwConfirm, setPwConfirm] = useState('')
+  const [pwError, setPwError] = useState('')
+  const [pwLoading, setPwLoading] = useState(false)
+
+  const handleChangePassword = async () => {
+    setPwError('')
+    if (pwNew.length < 6) { setPwError(t('auth.errors.password_short')); return }
+    if (pwNew !== pwConfirm) { setPwError(t('auth.errors.password_mismatch')); return }
+    setPwLoading(true)
+    const result = await changePassword(pwCurrent, pwNew)
+    setPwLoading(false)
+    if (result.success) {
+      addToast({ type: 'success', message: t('auth.passwordChanged') })
+      setPwModalOpen(false)
+      setPwCurrent(''); setPwNew(''); setPwConfirm('')
+    } else if (result.error === 'WRONG_PASSWORD') {
+      setPwError(t('auth.wrongPassword'))
+    } else {
+      setPwError(result.error || t('errors.unknown'))
+    }
+  }
 
   const handleEnableNotifs = async () => {
     const granted = await requestNotificationPermission()
@@ -220,6 +246,68 @@ export default function TeamView() {
           })}
         </div>
       </div>
+
+      {/* Profile section */}
+      {profile && (
+        <div className="p-4 rounded-xl" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+          <h3 className="text-sm font-bold mb-3" style={{ fontFamily: 'var(--font-display)', color: 'var(--text-secondary)' }}>
+            {t('nav.dashboard') === 'Start' ? 'Profil' : 'Profil'}
+          </h3>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center"
+                style={{ background: 'var(--surface-active)', color: 'var(--neon-cyan)' }}>
+                <User size={20} />
+              </div>
+              <div>
+                <span className="text-sm font-medium" style={{ color: 'var(--text)' }}>{profile.codename}</span>
+                <div className="text-[10px] font-mono" style={{ color: 'var(--text-muted)' }}>
+                  {currentUserIsAdmin ? t('team.role.admin') : getUserRole(profile.id) === 'planner' ? t('team.role.planner') : t('team.role.member')}
+                </div>
+              </div>
+            </div>
+            <button onClick={() => { setPwModalOpen(true); setPwError('') }}
+              className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg font-medium transition-all"
+              style={{ background: 'var(--surface-active)', color: 'var(--text-secondary)' }}>
+              <KeyRound size={14} /> {t('auth.changePassword')}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Password change modal */}
+      <Modal open={pwModalOpen} onClose={() => { setPwModalOpen(false); setPwCurrent(''); setPwNew(''); setPwConfirm(''); setPwError('') }} title={t('auth.changePassword')} size="sm">
+        <div className="space-y-4">
+          <div>
+            <label className="block text-xs mb-1" style={{ color: 'var(--text-secondary)' }}>{t('auth.currentPassword')}</label>
+            <input type="password" value={pwCurrent} onChange={(e) => { setPwCurrent(e.target.value); setPwError('') }}
+              className="w-full px-4 py-2.5 rounded-xl outline-none text-sm"
+              style={{ background: 'var(--surface-solid)', border: '1px solid var(--border)', color: 'var(--text)' }}
+              autoFocus />
+          </div>
+          <div>
+            <label className="block text-xs mb-1" style={{ color: 'var(--text-secondary)' }}>{t('auth.newPassword')}</label>
+            <input type="password" value={pwNew} onChange={(e) => { setPwNew(e.target.value); setPwError('') }}
+              className="w-full px-4 py-2.5 rounded-xl outline-none text-sm"
+              style={{ background: 'var(--surface-solid)', border: '1px solid var(--border)', color: 'var(--text)' }} />
+          </div>
+          <div>
+            <label className="block text-xs mb-1" style={{ color: 'var(--text-secondary)' }}>{t('auth.newPasswordConfirm')}</label>
+            <input type="password" value={pwConfirm} onChange={(e) => { setPwConfirm(e.target.value); setPwError('') }}
+              onKeyDown={(e) => e.key === 'Enter' && !pwLoading && handleChangePassword()}
+              className="w-full px-4 py-2.5 rounded-xl outline-none text-sm"
+              style={{ background: 'var(--surface-solid)', border: '1px solid var(--border)', color: 'var(--text)' }} />
+          </div>
+          {pwError && <p className="text-xs" style={{ color: 'var(--danger)' }}>{pwError}</p>}
+          <button onClick={handleChangePassword}
+            disabled={pwLoading || !pwCurrent || !pwNew || !pwConfirm}
+            className="w-full py-2.5 rounded-xl font-semibold text-sm flex items-center justify-center gap-2"
+            style={{ background: 'var(--neon-cyan)', color: '#0A0B0F', opacity: pwLoading || !pwCurrent || !pwNew || !pwConfirm ? 0.5 : 1 }}>
+            {pwLoading && <Loader2 size={16} className="animate-spin" />}
+            {t('auth.changePassword')}
+          </button>
+        </div>
+      </Modal>
 
       <ConfirmDialog open={leaveConfirm} onClose={() => setLeaveConfirm(false)}
         onConfirm={handleLeave} title={t('team.leave')} message={t('team.confirmLeave')} danger />
