@@ -26,12 +26,10 @@ SET search_path = public
 AS $$
 BEGIN
     INSERT INTO dp_categories (team_id, name, letter, color, sort_order, requires_approval) VALUES
-        (NEW.id, 'Arbeit',      'A', '#7EB8C4', 0, FALSE),
-        (NEW.id, 'Ferien',      'F', '#E5A84B', 1, TRUE),
-        (NEW.id, 'Pikett',      'P', '#B8A8E0', 2, FALSE),
-        (NEW.id, 'Daagesdubel', 'D', '#6EC49E', 3, FALSE),
-        (NEW.id, 'Krankheit',   'K', '#D4706E', 4, TRUE),
-        (NEW.id, 'Militär',     'M', '#8B8578', 5, TRUE);
+        (NEW.id, 'Schicht A',  'SA', '#7EB8C4', 0, FALSE),
+        (NEW.id, 'Schicht B',  'SB', '#B8A8E0', 1, FALSE),
+        (NEW.id, 'Ferien',      'F', '#E5A84B', 2, TRUE),
+        (NEW.id, 'Krankheit',   'K', '#D4706E', 3, TRUE);
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
