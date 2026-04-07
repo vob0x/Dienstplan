@@ -42,7 +42,7 @@ const SwapsView = lazyRetry(() => import('@/components/Swaps/SwapsView'))
 const TeamView = lazyRetry(() => import('@/components/Team/TeamView'))
 const ManageView = lazyRetry(() => import('@/components/Manage/ManageView'))
 const StatsView = lazyRetry(() => import('@/components/Stats/StatsView'))
-const SetupWizard = lazyRetry(() => import('@/components/Setup/SetupWizard'))
+// SetupWizard removed: default categories created by DB trigger, members via Verwaltung
 
 // ---------------------------------------------------------------------------
 // Error boundary
@@ -121,25 +121,15 @@ export default function Layout() {
   const fetchAll = useDutyStore((s) => s.fetchAll)
   const fetchSwaps = useSwapStore((s) => s.fetchSwaps)
   const members = useDutyStore((s) => s.members)
-  const categories = useDutyStore((s) => s.categories)
   const [refreshing, setRefreshing] = useState(false)
   const [moreMenuOpen, setMoreMenuOpen] = useState(false)
-  const [showSetup, setShowSetup] = useState(false)
   const isMobile = useIsMobile()
-  const { canAccessView, isPlanner, isAdmin } = usePermissions()
-  const dutyLoading = useDutyStore((s) => s.loading)
+  const { canAccessView, isPlanner } = usePermissions()
 
   const fetchTeamData = useTeamStore((s) => s.fetchTeamData)
 
-  // Check if setup wizard should show (admin only, after data has loaded)
-  useEffect(() => {
-    if (team && !dutyLoading && members.length === 0 && categories.length === 0 && isAdmin) {
-      const setupDone = localStorage.getItem('dp_setup_complete')
-      if (!setupDone) {
-        setShowSetup(true)
-      }
-    }
-  }, [team, dutyLoading, members.length, categories.length, isAdmin])
+  // Setup wizard disabled: default categories are created by DB trigger,
+  // members are managed via Verwaltung. No wizard needed.
 
   const handleRefresh = async () => {
     if (refreshing) return
@@ -203,31 +193,6 @@ export default function Layout() {
   const mobileMainNav = navItems.slice(0, 4)
   const mobileOverflowNav = navItems.slice(4)
   const hasOverflow = mobileOverflowNav.length > 0
-
-  // Setup wizard
-  if (showSetup && team) {
-    return (
-      <div className="h-screen flex flex-col" style={{ background: 'var(--bg)' }}>
-        <header className="sticky top-0 z-40 no-print" style={{
-          background: 'var(--surface-elevated)',
-          borderBottom: '1px solid var(--border)',
-          paddingTop: 'env(safe-area-inset-top, 0px)',
-        }}>
-          <div className="flex items-center justify-between px-4 py-2">
-            <h1 className="text-lg font-bold" style={{ fontFamily: 'var(--font-display)', color: 'var(--neon-cyan)' }}>
-              {t('app.name')}
-            </h1>
-          </div>
-        </header>
-        <main className="flex-1 overflow-y-auto">
-          <Suspense fallback={null}>
-            <SetupWizard onComplete={() => setShowSetup(false)} />
-          </Suspense>
-        </main>
-        <ToastContainer />
-      </div>
-    )
-  }
 
   return (
     <div className="h-screen flex flex-col" style={{ background: 'var(--bg)' }}>
