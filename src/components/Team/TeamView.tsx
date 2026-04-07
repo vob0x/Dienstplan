@@ -204,7 +204,7 @@ export default function TeamView() {
           {t('team.members')} ({members.length})
         </h3>
         <div className="space-y-2">
-          {members.map((member) => {
+          {[...members].sort((a, b) => (a.display_name || '').localeCompare(b.display_name || '')).map((member) => {
             const role = getUserRole(member.user_id)
             const isMe = member.user_id === profile?.id
             const roleIcon = role === 'admin' ? Crown : role === 'planner' ? UserCog : Shield
