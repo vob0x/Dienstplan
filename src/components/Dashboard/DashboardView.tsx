@@ -17,7 +17,7 @@ export default function DashboardView() {
   const profile = useAuthStore((s) => s.profile)
   const { members, categories, getDuties } = useDutyStore()
   const swaps = useSwapStore((s) => s.swaps)
-  const { setCurrentView, year } = useUiStore()
+  const { setCurrentView, setCalendarView, setDayDate, year } = useUiStore()
   const { isPlanner } = usePermissions()
   const months = tArray('months') as string[]
   const daysLong = tArray('daysLong') as string[]
@@ -68,6 +68,13 @@ export default function DashboardView() {
 
   const catMap = useMemo(() => new Map(categories.map((c) => [c.id, c])), [categories])
 
+  /** Navigate to calendar day view for a specific date */
+  const goToDay = (dateStr: string) => {
+    setDayDate(dateStr)
+    setCalendarView('day')
+    setCurrentView('calendar')
+  }
+
   const formatDayName = (d: Date) => {
     const dayIdx = d.getDay() === 0 ? 6 : d.getDay() - 1
     return daysLong[dayIdx] || ''
@@ -104,10 +111,18 @@ export default function DashboardView() {
       </div>
 
       {/* Today's duties */}
-      <section className="p-4 rounded-2xl" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+      <section
+        className="p-4 rounded-2xl transition-all cursor-pointer"
+        style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
+        onClick={() => goToDay(todayStr)}
+        role="link"
+        tabIndex={0}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') goToDay(todayStr) }}
+      >
         <h2 className="text-sm font-bold mb-3 flex items-center gap-2" style={{ fontFamily: 'var(--font-display)', color: 'var(--text-secondary)' }}>
           <CalendarDays size={16} style={{ color: 'var(--neon-cyan)' }} />
           {t('dashboard.todayDuties')}
+          <ChevronRight size={14} className="ml-auto" style={{ color: 'var(--text-muted)' }} />
         </h2>
         {todayDuties.length === 0 ? (
           <p className="text-sm py-4 text-center" style={{ color: 'var(--text-muted)' }}>
@@ -181,8 +196,11 @@ export default function DashboardView() {
             const weekend = isWeekend(dateObj)
             const hasDuties = duties.length > 0
             return (
-              <div key={date} className="flex items-center gap-3 px-3 py-2 rounded-xl"
-                style={{ background: hasDuties ? 'var(--surface-hover)' : 'transparent', opacity: hasDuties ? 1 : 0.6 }}>
+              <button key={date}
+                className="flex items-center gap-3 px-3 py-2 rounded-xl w-full text-left transition-all"
+                style={{ background: hasDuties ? 'var(--surface-hover)' : 'transparent', opacity: hasDuties ? 1 : 0.6 }}
+                onClick={() => goToDay(date)}
+              >
                 <div className="w-12 text-center flex-shrink-0">
                   <div className="text-[10px] font-medium"
                     style={{ color: weekend ? 'var(--text-muted)' : holiday ? 'var(--neon-red)' : 'var(--text-secondary)' }}>
@@ -206,7 +224,8 @@ export default function DashboardView() {
                     <span className="text-xs" style={{ color: 'var(--text-muted)' }}>—</span>
                   )}
                 </div>
-              </div>
+                <ChevronRight size={14} className="flex-shrink-0" style={{ color: 'var(--text-muted)', opacity: 0.5 }} />
+              </button>
             )
           })}
         </div>
